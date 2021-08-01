@@ -51,6 +51,12 @@
 #define IOEXPANDER_OVERRIDE_ARDUINO_FUNCTIONS 1
 #endif
 
+// use microseconds instead of milliseconds for the timer that invokes the interrupt handler
+// if this option is enabled, system_timer_reinit() must be called in setup()
+#ifndef IOEXPANDER_INTERRUPT_MICROS_TIMER
+#define IOEXPANDER_INTERRUPT_MICROS_TIMER 0
+#endif
+
 #if DEBUG_IOEXPANDER
 #include "debug_helper_enable.h"
 #else
@@ -285,12 +291,15 @@ namespace IOExpander {
         // the callback will be called as scheduled_function outside the interrupt handler
         // and the handler does not have to be in IRAM
         //
+        // add interrupts for pins set in pinMask
+        // if interrupts are already enabled, the pins set in the mask will be added
         // gpioPin is the GPIO pin for the interrupt
         // triggerMode is the interrupt mode for the GPIO pin
         void attachInterrupt(uint8_t gpioPin, void *device, uint16_t pinMask, const InterruptCallback &callback, uint8_t mode, TriggerMode triggerMode = TriggerMode::DEVICE_DEFAULT);
 
-        // remove interrupt handler
-        void detachInterrupt(uint8_t gpioPin, void *device, uint16_t pinMask);
+        // remove interrupts for pins set in pinMask
+        // if all pins are disabled, the callback handler is removed as well
+        void detachInterrupt(uint8_t gpioPin, void *device, uint16_t pinMask = ~0);
 
         // recursive methods
         void _beginRecursive(TwoWire &wire);
@@ -391,6 +400,138 @@ namespace IOExpander {
         uint8_t _startPin;
         TwoWire *_wire;
     };
+
+    namespace Interrupts {
+
+        enum class InterruptModeEnum : uint8_t {
+            NONE = 0,
+            MODE_RISING = 1,
+            MODE_FALLING = 2,
+            MODE_CHANGE = 3,
+            MAX
+        };
+        static_assert(static_cast<int>(InterruptModeEnum::MAX) <= 0b100, "limited to 2 bit");
+
+        constexpr InterruptModeEnum mode2InterruptMode(uint8_t mode) {
+            return mode == RISING ? InterruptModeEnum::MODE_RISING : mode == FALLING ? InterruptModeEnum::MODE_FALLING : mode == CHANGE ? InterruptModeEnum::MODE_CHANGE : InterruptModeEnum::NONE;
+        }
+
+        template<typename _DataType>
+        struct InterruptMode {
+
+            using DataType = _DataType;
+            using ModeDataType = typename std::conditional<sizeof(DataType) == 1,uint16_t,uint32_t>::type;
+
+            static constexpr uint8_t kBits = sizeof(DataType) << 3;
+
+            InterruptModeEnum operator [](uint8_t pin) const {
+                // 2 bit value
+                // mask = 3 << (pin << 1);
+                // shift = (pin << 1);
+                // mask bits and shift them to the right
+                return static_cast<InterruptModeEnum>((_value & (3 << (pin << 1))) >> (pin << 1));
+            }
+
+            void set(uint8_t pin, InterruptModeEnum mode) {
+                // 2 bit value
+                // mask = 3 << (pin << 1);
+                // shift = (pin << 1);
+                // mask bits to change and add new settings
+                _value = (_value & ~(3 << (pin << 1))) | (static_cast<uint8_t>(mode) << (pin << 1));
+                if (mode == InterruptModeEnum::NONE) {
+                    _mask &= ~_BV(pin);
+                }
+                else {
+                    _mask |= _BV(pin);
+                }
+            }
+
+            InterruptMode(ModeDataType value = 0, DataType state = 0) : _value(value), _state(state), _mask(0), _captured(0) {}
+
+            operator bool() const {
+                return _value != 0;
+            }
+
+            // returns the pins that changed since the last update
+            DataType getEvents(DataType portValue) {
+                // check if the pin state has changed
+                if ((_state & _mask) == (portValue & _mask)) {
+                    return 0;
+                }
+                // find pins with changed states
+                DataType events = 0;
+                for(uint8_t i = 0; i < kBits; i++) {
+                    DataType mask = _BV(i);
+                    switch(operator[](i)) {
+                        case InterruptModeEnum::MODE_CHANGE:
+                            if ((_state & mask) != (portValue & mask)) {
+                                events |= mask;
+                            }
+                            break;
+                        case InterruptModeEnum::MODE_RISING:
+                            if (((_state & mask) == 0) && ((portValue & mask) != 0)) {
+                                events |= mask;
+                            }
+                            break;
+                        case InterruptModeEnum::MODE_FALLING:
+                            if (((_state & mask) != 0) && ((portValue & mask) == 0)) {
+                                events |= mask;
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                return events;
+            }
+
+            void captureEvents(DataType portValue) {
+                auto events = getEvents(portValue);
+                if (events) {
+                    _captured |= events;
+                    _state = portValue;
+                }
+            }
+
+            static const __FlashStringHelper *toString(InterruptModeEnum mode) {
+                switch(mode) {
+                    case InterruptModeEnum::NONE:
+                        return F("NONE");
+                    case InterruptModeEnum::MODE_RISING:
+                        return F("RISING");
+                    case InterruptModeEnum::MODE_FALLING:
+                        return F("FALLING");
+                    case InterruptModeEnum::MODE_CHANGE:
+                        return F("CHANGE");
+                    default:
+                        break;
+                }
+                return F("ERR");
+            }
+
+            String toString() const {
+                String tmp;
+                tmp += F("port=");
+                tmp += decbin(_state);
+                tmp += ' ';
+                tmp += F("mask=");
+                tmp += decbin(_mask);
+                tmp += ' ';
+                for(int8_t i = kBits - 1; i >= 0; i--) {
+                    char buf[32];
+                    snprintf_P(buf, sizeof(buf), PSTR("%u=%s "), i, toString(operator[](i)));
+                    tmp += buf;
+                }
+                return tmp;
+            }
+
+            ModeDataType _value;
+            DataType _state;
+            DataType _mask;
+            DataType _captured;
+        };
+
+    }
 
     class PCF8574;
     class PCF8575;

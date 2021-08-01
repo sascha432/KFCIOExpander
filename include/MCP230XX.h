@@ -109,7 +109,7 @@ namespace IOExpander {
 
             template<Port _Port>
             inline  __attribute__((__always_inline__))
-            void reset(uint8_t value = 0) {
+            void reset(uint8_t value) {
                 (_Port == Port::A ? A : B) = value;
             }
 
@@ -311,12 +311,7 @@ namespace IOExpander {
 
         // get register adddress for port A or B
         constexpr uint8_t _portAddress(uint8_t regAddr, Port port) const {
-            if (port == Port::A) {
-                return regAddr;
-            }
-            else {
-                return regAddr + PORT_BANK_INCREMENT;
-            }
+            return (port == Port::A) ? regAddr : regAddr + PORT_BANK_INCREMENT;
         }
 
         // get register adddress for port A or B
@@ -456,10 +451,51 @@ namespace IOExpander {
         void enableInterrupts(uint16_t pinMask, const InterruptCallback &callback, uint8_t mode, TriggerMode triggerMode);
         void disableInterrupts(uint16_t pinMask);
         bool interruptsEnabled();
-        void invokeCallback();
 
-        void interruptHandler();
-        bool setInterruptFlag();
+        // template<typename _DeviceBaseType, typename _BaseClass>
+        // inline void MCP230XX<_DeviceBaseType, _BaseClass>::invokeCallback()
+        // {
+        //     // read captured ports that have PINs with interrupts
+        //     if (_GPINTEN[Port::A] && _GPINTEN[Port::B]) {
+        //         _read(INTCAP, _INTCAP);
+        //     }
+        //     else if (_GPINTEN[Port::A]) {
+        //         _read8(INTCAP, _INTCAP, Port::A);
+        //     }
+        //     if (_GPINTEN[Port::B]) {
+        //         _read8(INTCAP, _INTCAP, Port::B);
+        //     }
+        //     auto port = Register(readPortAB());
+
+        //     // ::printf("INTCAP A=%02x B=%02X PORT A=%02x B=%02X\n", _INTCAP[Port::A], _INTCAP[Port::B], port[Port::A], port[Port::B]);
+
+        //     _callback(static_cast<uint16_t>(_INTCAP)); // TODO read captured pin state
+        // }
+
+
+        inline  __attribute__((__always_inline__))
+        bool interruptHandler() {
+            // readPort();
+            // auto mask = _intMode._captured;
+            // if (mask) {
+            //     _callback(mask);
+            //     _intMode._captured &= ~mask;
+            // }
+            // if (_intMode._captured == 0) {
+            //     return false;
+            // }
+            return false;
+        }
+
+        inline  __attribute__((__always_inline__))
+        void ISRHandler() {
+            if (!_timer) {
+                _timer.setCallback([this]() {
+                    return this->interruptHandler();
+                });
+                _timer.start(100);
+            }
+        }
 
         template<DeviceTypeEnum _DeviceType>
         const __FlashStringHelper *__regAddrName(uint8_t addr) {
@@ -477,8 +513,10 @@ namespace IOExpander {
         void _read8(uint8_t regAddr, Register &regValue, Port port);
 
     public:
-        uint32_t _interruptsPending;
         InterruptCallback _callback;
+        Timer _timer;
+        // InterruptMode _intMode;
+        uint32_t _interruptsPending;
 
     protected:
         Register _IODIR;

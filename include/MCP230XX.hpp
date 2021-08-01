@@ -264,52 +264,6 @@ namespace IOExpander {
     }
 
     template<typename _DeviceBaseType, typename _BaseClass>
-    inline void MCP230XX<_DeviceBaseType, _BaseClass>::invokeCallback()
-    {
-        // read captured ports that have PINs with interrupts
-        if (_GPINTEN[Port::A] && _GPINTEN[Port::B]) {
-            _read(INTCAP, _INTCAP);
-        }
-        else if (_GPINTEN[Port::A]) {
-            _read8(INTCAP, _INTCAP, Port::A);
-        }
-        if (_GPINTEN[Port::B]) {
-            _read8(INTCAP, _INTCAP, Port::B);
-        }
-        auto port = Register(readPortAB());
-
-        ::printf("INTCAP A=%02x B=%02X PORT A=%02x B=%02X\n", _INTCAP[Port::A], _INTCAP[Port::B], port[Port::A], port[Port::B]);
-
-        _callback(static_cast<uint16_t>(_INTCAP)); // TODO read captured pin state
-    }
-
-    template<typename _DeviceBaseType, typename _BaseClass>
-    inline void MCP230XX<_DeviceBaseType, _BaseClass>::interruptHandler()
-    {
-        uint32_t start = micros();
-        ets_intr_lock();
-        while (_interruptsPending) {
-            _interruptsPending = 0;
-            ets_intr_unlock();
-
-            invokeCallback();
-
-            // check again if any new interupts occured while processing
-            ets_intr_lock();
-            if (_interruptsPending) {
-                if (micros() - start > 10000) {
-                    // abort after 2ms and reschedule
-                    schedule_function([this]() {
-                        interruptHandler();
-                    });
-                    break;
-                }
-            }
-        }
-        ets_intr_unlock();
-    }
-
-    template<typename _DeviceBaseType, typename _BaseClass>
     inline void MCP230XX<_DeviceBaseType, _BaseClass>::_write(uint8_t regAddr, Register &regValue)
     {
         uint8_t error;
@@ -327,7 +281,7 @@ namespace IOExpander {
     inline void MCP230XX<_DeviceBaseType, _BaseClass>::_read(uint8_t regAddr, Register &regValue)
     {
         uint8_t error;
-        regAddr = _portAddress<Port::A>(regAddr);
+        regAddr = _portAddress(regAddr, Port::A);
         _wire->beginTransmission(_address);
         _wire->write(regAddr);
         if ((error = _wire->endTransmission(false)) != 0) {
@@ -375,13 +329,6 @@ namespace IOExpander {
         }
         target = _wire->read();
         // __LDBG_printf("_read8 reg_addr=%s %c=%02x", __regAddrName(regAddr), port == Port::A ? 'A' : 'B', target);
-    }
-
-    template<typename _DeviceBaseType, typename _BaseClass>
-    inline  __attribute__((__always_inline__))
-    bool MCP230XX<_DeviceBaseType, _BaseClass>::setInterruptFlag() {
-        _interruptsPending++;
-        return _interruptsPending - 1;
     }
 
 }

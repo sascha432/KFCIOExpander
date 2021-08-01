@@ -5,6 +5,7 @@
 #pragma once
 
 #include "IOExpander.h"
+#include "Timer.h"
 
 #if DEBUG_IOEXPANDER
 #include "debug_helper_enable.h"
@@ -163,7 +164,13 @@ namespace IOExpander {
             output.print(F(HTML_E(div)));
         }
         else {
-            output.printf_P(PSTR("%s @ I2C address 0x%02x (pin %u-%u)"), _device.getDeviceName(), _device.getAddress(), DeviceConfigType::kBeginPin, DeviceConfigType::kEndPin - 1);
+            output.printf_P(PSTR("%s @ I2C address 0x%02x, pin %u-%u, interrupts %s"),
+                _device.getDeviceName(),
+                _device.getAddress(),
+                DeviceConfigType::kBeginPin,
+                DeviceConfigType::kEndPin - 1,
+                _device.interruptsEnabled() ? PSTR("enabled") : PSTR("disabled")
+            );
             if __CONSTEXPR17 (DeviceType::kHasIsConnected) {
                 if (!_device.isConnected()) {
                     output.print(F(" (ERROR - Device not found!)"));
@@ -302,15 +309,15 @@ namespace IOExpander {
     void ConfigIterator<_ConfigType>::_detachInterruptRecursive(void *device, uint8_t gpioPin, uint16_t pinMask)
     {
         if (device == reinterpret_cast<void *>(&_device)) {
+            _device.disableInterrupts(pinMask);
             if (_device.interruptsEnabled() == false) {
                 // remove interrupt handler
                 __LDBG_printf("detachInterrupt device=%s gpio=%u", _device.getDeviceName(), gpioPin);
                 ::detachInterrupt(gpioPin);
             }
-            _device.disableInterrupts();
             return;
         }
-        _next._detachInterruptRecursive(device);
+        _next._detachInterruptRecursive(device, gpioPin, pinMask);
     }
 
     template<typename _ConfigType>
@@ -318,15 +325,7 @@ namespace IOExpander {
     void ConfigIterator<_ConfigType>::_setInterruptFlagRecursive(void *device)
     {
         if (device == reinterpret_cast<void *>(&_device)) {
-            // setInterrutFlag() returns false if any interrupts are pending
-            // the function will not be installed again until the flag has been cleared
-            if (_device.setInterruptFlag() == false) {
-                // run function outside ISR
-                schedule_function([this]() {
-                    _device.interruptHandler();
-                });
-            }
-            return;
+            _device.ISRHandler();
         }
         _next._setInterruptFlagRecursive(device);
     }

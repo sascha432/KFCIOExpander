@@ -68,8 +68,7 @@ namespace IOExpander {
 
     void IRAM_ATTR __interruptHandler(void *arg)
     {
-        ::printf("interrupt %p\n", arg);
-        // config._setInterruptFlagRecursive(arg);
+        config._setInterruptFlagRecursive(arg);
     }
 
 }

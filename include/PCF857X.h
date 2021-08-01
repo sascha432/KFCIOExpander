@@ -5,6 +5,7 @@
 #pragma once
 
 #include "IOExpander.h"
+#include "Timer.h"
 
 namespace IOExpander {
 
@@ -88,84 +89,6 @@ namespace IOExpander {
 
     }
 
-    namespace PCF857XHelpers {
-
-        enum class InterruptModeEnum : uint8_t {
-            NONE = 0,
-            IM_RISING = 1,
-            IM_FALLING = 2,
-            IM_CHANGE = 3,
-            MAX
-        };
-        static_assert(static_cast<int>(InterruptModeEnum::MAX) <= 0b100, "limited to 2 bit");
-
-        constexpr InterruptModeEnum mode2InterruptMode(uint8_t mode) {
-            return mode == RISING ? InterruptModeEnum::IM_RISING : mode == FALLING ? InterruptModeEnum::IM_FALLING : mode == CHANGE ? InterruptModeEnum::IM_CHANGE : InterruptModeEnum::NONE;
-        }
-
-        template<typename _DataType>
-        struct InterruptMode {
-
-            using DataType = typename std::conditional<sizeof(_DataType) == 1,uint16_t,uint32_t>::type;
-
-            InterruptModeEnum operator [](uint8_t pin) const {
-                const uint8_t shift = (pin << 1);
-                const DataType mask = (3 << shift);
-                return static_cast<InterruptModeEnum>((_value & mask) >> shift);
-            }
-
-            void set(uint8_t pin, InterruptModeEnum mode) {
-                #if 0
-                    const uint8_t shift = (pin << 1);
-                    const DataType mask = (3 << shift);
-                    _value &= ~mask;
-                    _value |= (static_cast<uint8_t>(mode) << shift);
-                #else
-                    // does gcc optimize this any better?
-                    _value = (_value & ~(3 << (pin << 1))) | (static_cast<uint8_t>(mode) << (pin << 1));
-                #endif
-            }
-
-            InterruptMode(DataType value = 0) : _value(value) {}
-
-            InterruptMode &operator &=(DataType value) {
-                _value &= value;
-            }
-            InterruptMode &operator |=(DataType value) {
-                _value &= value;
-            }
-
-            static const __FlashStringHelper *toString(InterruptModeEnum mode) {
-                switch(mode) {
-                    case InterruptModeEnum::NONE:
-                        return F("NONE");
-                    case InterruptModeEnum::IM_RISING:
-                        return F("RISING");
-                    case InterruptModeEnum::IM_FALLING:
-                        return F("FALLING");
-                    case InterruptModeEnum::IM_CHANGE:
-                        return F("CHANGE");
-                }
-                return F("ERR");
-            }
-
-            String toString() const {
-                String tmp;
-                char buf[32] = {};
-                for(uint8_t i = 0; i < (sizeof(_DataType) << 3); i++, tmp += ' ') {
-                    snprintf_P(buf, sizeof(buf) - 1, PSTR("pin=%u mode=%s"), i, toString((*this)[i]));
-                    tmp += buf;
-                }
-                return tmp;
-            }
-
-        private:
-            DataType _value;
-        };
-
-    }
-
-
     template<typename _DeviceBaseType, typename _DerivedClass, typename _ConfigClass>
     class PCF857X : public Base<_DeviceBaseType, _DerivedClass, _ConfigClass> {
     public:
@@ -185,9 +108,9 @@ namespace IOExpander {
         using DDRType = typename IOWrapper::PCF857X<SelfType, DataType>::DDR;
         using PINType = typename IOWrapper::PCF857X<SelfType, DataType>::PIN;
         using PORTType = typename IOWrapper::PCF857X<SelfType, DataType>::PORT;
-        using InterruptMode = typename PCF857XHelpers::InterruptMode<DataType>;
+        using InterruptMode = typename Interrupts::InterruptMode<DataType>;
 
-        static constexpr uint8_t DataWidthBits = sizeof(DataType) << 3;
+        static constexpr uint8_t DataTypeSizeInBits = sizeof(DataType) << 3;
 
     public:
         static constexpr uint8_t P0 = 0;
@@ -213,8 +136,7 @@ namespace IOExpander {
             BaseClass(address, wire),
             DDR(*this, 0),
             PIN(*this, 0),
-            PORT(*this, ~0),
-            _intState(0)
+            PORT(*this, ~0)
         {
         }
 
@@ -244,11 +166,32 @@ namespace IOExpander {
         bool interruptsEnabled();
 
         inline  __attribute__((__always_inline__))
-        void interruptHandler() {}
+        bool interruptHandler() {
+            readPort();
+            auto mask = _intMode._captured;
+            if (mask) {
+                _callback(mask);
+                _intMode._captured &= ~mask;
+            }
+            if (_intMode._captured == 0) {
+                return false;
+            }
+            return true;
+        }
 
         inline  __attribute__((__always_inline__))
-        bool setInterruptFlag() {
-            return true;
+        void ISRHandler() {
+            if (!_timer) {
+                _timer.setCallback([this]() {
+                    return this->interruptHandler();
+                });
+                // less than 300µs misses captured pins sometimes
+                _timer.start(300);
+            }
+        }
+
+        void captureEvents(DataType value) {
+            _intMode.captureEvents(value);
         }
 
     public:
@@ -257,8 +200,9 @@ namespace IOExpander {
         PORTType PORT;
 
     protected:
+        Timer _timer;
+        InterruptCallback _callback;
         InterruptMode _intMode;
-        DataType _intState;
     };
 
     template<typename _ConfigType>

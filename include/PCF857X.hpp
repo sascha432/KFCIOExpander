@@ -36,11 +36,12 @@ namespace IOExpander {
             auto &wire = _parent->getWire();
             if (wire.requestFrom(_parent->getAddress(), 0x01U) == 1) {
                 _value = wire.read();
+                _parent->captureEvents(_value);
             }
             else {
                 __Error_printf("_readValue requestFrom()=1 available=%u", wire.available());
             }
-            __LDBG_printf("_readValue PIN=%02x DDR=%02x PORT=%02x _value=%02x", _parent->PIN._value, _parent->DDR._value, _parent->PORT._value, _value);
+            // __LDBG_printf("_readValue PIN=%s DDR=%s PORT=%s _value=%s", decbin(_parent->PIN._value).c_str(), decbin(_parent->DDR._value).c_str(), decbin(_parent->PORT._value).c_str(), decbin(_value).c_str());
             return _value;
         }
 
@@ -55,6 +56,7 @@ namespace IOExpander {
             if (wire.requestFrom(_parent->getAddress(), 0x02U) == 2) {
                 _value = wire.read();
                 _value |= (wire.read() << 8);
+                _parent->captureEvents(_value);
             }
             else {
                 __Error_printf("_readValue requestFrom()=2 available=%u", wire.available());
@@ -83,7 +85,7 @@ namespace IOExpander {
         {
             // set all ports in INPUT mode to high and add all values for OUTPUT ports
             DataType value = (~_parent->DDR._value) | (_value & _parent->DDR._value);
-            __LDBG_printf("write parent=%p PIN=%02x DDR=%02x PORT=%02x value=%02x", _parent, _parent->PIN._value, _parent->DDR._value, _parent->PORT._value, value);
+            // __LDBG_printf("write PIN=%s DDR=%s PORT=%s value=%s", decbin(_parent->PIN._value).c_str(), decbin(_parent->DDR._value).c_str(), decbin(_parent->PORT._value).c_str(), decbin(value).c_str());
             auto &wire = _parent->getWire();
             wire.beginTransmission(_parent->getAddress());
             wire.write(value);
@@ -102,7 +104,7 @@ namespace IOExpander {
         {
             // set all ports in INPUT mode to high and add all values for OUTPUT ports
             DataType value = (~_parent->DDR._value) | (_value & _parent->DDR._value);
-            __LDBG_printf("write parent=%p PIN=%04x DDR=%04x PORT=%04x value=%04x", _parent, _parent->PIN._value, _parent->DDR._value, _parent->PORT._value, value);
+            // __LDBG_printf("write PIN=%04x DDR=%04x PORT=%04x value=%04x", _parent->PIN._value, _parent->DDR._value, _parent->PORT._value, value);
             auto &wire = _parent->getWire();
             wire.beginTransmission(_parent->getAddress());
             wire.write(value & 0xff);
@@ -158,11 +160,13 @@ namespace IOExpander {
                 break;
             case INPUT_PULLUP:
                 // High-level output current: -1mA
+                DDR._value &= ~_BV(pin);
                 PORT |= _BV(pin);
-                // passthrough
-            default:
+                break;
             case INPUT:
-                DDR &= ~_BV(pin);
+            default:
+                DDR._value &= ~_BV(pin);
+                PORT &= ~_BV(pin);
                 break;
         }
 
@@ -206,65 +210,50 @@ namespace IOExpander {
     template<typename _BaseClass, typename _IOWrapper, typename _ConfigClass>
     inline typename PCF857X<_BaseClass, _IOWrapper, _ConfigClass>::DataType PCF857X<_BaseClass, _IOWrapper, _ConfigClass>::readPort()
     {
-        return static_cast<uint8_t>(PIN);
+        return static_cast<DataType>(PIN);
     }
 
     template<typename _BaseClass, typename _IOWrapper, typename _ConfigClass>
     inline void PCF857X<_BaseClass, _IOWrapper, _ConfigClass>::enableInterrupts(DataType pinMask, const InterruptCallback &callback, uint8_t mode, TriggerMode triggerMode)
     {
-        typename InterruptMode::DataType value = 0;
-        typename InterruptMode::DataType mask = 0;
-        DataType stateMask = 0;
-        for(uint8_t i = DataWidthBits - 1; i >= 0; i--) {
-            value <<= 2;
-            mask <<= 2;
-            stateMask <<= 1;
+        DataType mask = 0;
+        for(uint8_t i = 0; i < DataTypeSizeInBits; i++) {
             if (pinMask & _BV(i)) {
-                mask |= 0b11;
-                value |= static_cast<uint8_t>(PCF857XHelpers::mode2InterruptMode(mode));
-                stateMask |= 0b1;
+                mask |= _BV(i);
+                _intMode.set(i, Interrupts::mode2InterruptMode(mode));
             }
+         }
+         // mask state and add pin states from port
+         _intMode._state = (_intMode._state & ~mask) | (readPort() & mask);
+        ets_intr_lock();
+        _callback = interruptsEnabled() ? callback : nullptr;
+        if (!_callback) {
+            _timer.detach();
         }
-
-        // clear pins from interrupt mode
-        _intMode &= ~mask;
-        // set new interrupt mode for pins
-        _intMode |= value;
-
-        // remove pins from state
-        _intState &= ~stateMask;
-        // set current pin values
-        stateMask |= (readPort() & stateMask);
-
-        __LDBG_printf("interrupts %s", _intMode.toString().c_str());
-
-        // DataType mask = 0;
-        // for(uint8_t i = 0; i < DataWidthBits; i++) {
-        //     _intMode.set(i, _intMode.mode2InterruptMode(mode));
-        //     mask |= _BV(i);
-
-        //  }
-        //  _intState = (_intState & ~mask) | (readPort() & mask);
+        ets_intr_unlock();
     }
 
     template<typename _BaseClass, typename _IOWrapper, typename _ConfigClass>
     inline void PCF857X<_BaseClass, _IOWrapper, _ConfigClass>::disableInterrupts(DataType pinMask)
     {
-        typename InterruptMode::DataType mask = 0;
-        for(uint8_t i = DataWidthBits - 1; i >= 0; i--) {
-            mask <<= 2;
+        for(uint8_t i = 0; i < DataTypeSizeInBits; i++) {
+            // remove disabled pins
             if (pinMask & _BV(i)) {
-                mask |= 0b11;
+                _intMode.set(i, Interrupts::InterruptModeEnum::NONE);
             }
-        }
-        // remove disabled pins
-        _intMode &= mask;
+         }
+         if (!interruptsEnabled()) {
+             ets_intr_lock();
+            _callback = nullptr;
+            _timer.detach();
+            ets_intr_unlock();
+         }
     }
 
     template<typename _BaseClass, typename _IOWrapper, typename _ConfigClass>
     inline bool PCF857X<_BaseClass, _IOWrapper, _ConfigClass>::interruptsEnabled()
     {
-        return (_intMode._value != 0);
+        return (_intMode != false);
     }
 
 }
