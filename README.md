@@ -50,6 +50,7 @@ Adding an I/O expander can be done with the IOEXPANDER_DEVICE_CONFIG macro.
 | MCP23008 | DeviceTypeMCP23008 | INPUT, INPUT_PULLUP, OUTPUT | Yes | No | Yes |
 | MCP23017 | DeviceTypeMCP23017 | INPUT, INPUT_PULLUP, OUTPUT | Yes | No | Yes |
 | TinyPwm | DeviceTypeTinyPwm | INPUT, OUTPUT | Yes | Yes | No |
+| TinyPwm_V_0_0_2 | DeviceTypeTinyPwm | INPUT, OUTPUT | Yes | Yes | No |
 | <s>PCA9685</s> | <s>DeviceTypePCA9685</s> | OUTPUT | Yes | Yes | No |
 | <s>NeoPixel</s> | <s>DeviceTypeNeoPixel</s> | OUTPUT | Yes | Yes | No |
 
