@@ -14,6 +14,7 @@
 
 extern "C" void ICACHE_FLASH_ATTR _etstimer_callback(void *arg);
 extern "C" void ets_timer_done(ETSTimer *ptimer);
+extern "C" bool can_yield();
 
 namespace IOExpander {
 
@@ -41,37 +42,31 @@ namespace IOExpander {
             }
         }
 
-        void start(uint32_t intervalMicros) {
+        void start(uint32_t interval) {
+            if (can_yield()) {
+                optimistic_yield(10000);
+            }
             ets_timer_setfn(&_timer, reinterpret_cast<ETSTimerFunc *>(_etstimer_callback), this);
-            #if DEBUG_IOEXPANDER
-                _startTime = micros();
-            #endif
             #if IOEXPANDER_INTERRUPT_MICROS_TIMER
-                ets_timer_arm_new(&_timer, intervalMicros, true, false);
+                ets_timer_arm_new(&_timer, interval, true, false);
             #else
-                intervalMicros /= 1000;
-                if (intervalMicros == 0) {
-                    intervalMicros = 1;
-                }
-                ets_timer_arm_new(&_timer, intervalMicros, true, true);
+                ets_timer_arm_new(&_timer, interval, true, true);
             #endif
-
         }
 
         void run() {
-            #if DEBUG_IOEXPANDER
-                ::printf("%u\n", (unsigned)(micros() - _startTime));
-            #endif
             if (!_callback()) {
                 detach();
+            }
+            else {
+                if (can_yield()) {
+                    yield();
+                }
             }
         }
 
         ETSTimer _timer;
         Callback _callback;
-        #if DEBUG_IOEXPANDER
-            uint32_t _startTime;
-        #endif
     };
 
 }

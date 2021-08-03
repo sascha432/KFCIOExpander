@@ -7,6 +7,12 @@
 
 #if HAVE_IOEXPANDER
 
+#if DEBUG_IOEXPANDER
+#include "debug_helper_enable.h"
+#else
+#include "debug_helper_disable.h"
+#endif
+
 namespace IOExpander {
 
     #if IOEXPANDER_DEVICE_CONFIG_NO_GLOBALS == 0

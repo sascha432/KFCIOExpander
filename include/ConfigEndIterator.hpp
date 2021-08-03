@@ -13,9 +13,13 @@ namespace IOExpander {
     {
     }
 
-    template<bool _HtmlOutput>
     inline __attribute__((__always_inline__))
     void ConfigEndIterator::_printStatusRecursive(Print &output)
+    {
+    }
+
+    inline __attribute__((__always_inline__))
+    void ConfigEndIterator::_printStatusHtmlRecursive(Print &output)
     {
     }
 

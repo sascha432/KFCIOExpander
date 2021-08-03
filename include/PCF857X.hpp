@@ -39,7 +39,7 @@ namespace IOExpander {
                 _parent->captureEvents(_value);
             }
             else {
-                __Error_printf("_readValue requestFrom()=1 available=%u", wire.available());
+                __DBG_printf("_readValue requestFrom()=1 available=%u", wire.available());
             }
             // __LDBG_printf("_readValue PIN=%s DDR=%s PORT=%s _value=%s", decbin(_parent->PIN._value).c_str(), decbin(_parent->DDR._value).c_str(), decbin(_parent->PORT._value).c_str(), decbin(_value).c_str());
             return _value;
@@ -59,7 +59,7 @@ namespace IOExpander {
                 _parent->captureEvents(_value);
             }
             else {
-                __Error_printf("_readValue requestFrom()=2 available=%u", wire.available());
+                __DBG_printf("_readValue requestFrom()=2 available=%u", wire.available());
             }
             __LDBG_printf("_readValue PIN=%04x DDR=%04x PORT=%04x _value=%04x", _parent->PIN._value, _parent->DDR._value, _parent->PORT._value, _value);
             return _value;
@@ -87,12 +87,14 @@ namespace IOExpander {
             DataType value = (~_parent->DDR._value) | (_value & _parent->DDR._value);
             // __LDBG_printf("write PIN=%s DDR=%s PORT=%s value=%s", decbin(_parent->PIN._value).c_str(), decbin(_parent->DDR._value).c_str(), decbin(_parent->PORT._value).c_str(), decbin(value).c_str());
             auto &wire = _parent->getWire();
-            wire.beginTransmission(_parent->getAddress());
+            _parent->beginTransmission();
+            // wire.beginTransmission(_parent->getAddress());
             wire.write(value);
-            uint8_t error;
-            if ((error = wire.endTransmission()) != 0) {
-                __Error_printf("_updatePort write()=1 value=%02x error=%u", value, error);
-            }
+            _parent->endTransmission();
+            // uint8_t error;
+            // if ((error = wire.endTransmission()) != 0) {
+            //     __DBG_printf("_updatePort write()=1 value=%02x error=%u", value, error);
+            // }
         }
 
         // ------------------------------------------------------------------
@@ -106,13 +108,15 @@ namespace IOExpander {
             DataType value = (~_parent->DDR._value) | (_value & _parent->DDR._value);
             // __LDBG_printf("write PIN=%04x DDR=%04x PORT=%04x value=%04x", _parent->PIN._value, _parent->DDR._value, _parent->PORT._value, value);
             auto &wire = _parent->getWire();
-            wire.beginTransmission(_parent->getAddress());
+            _parent->beginTransmission();
+            // wire.beginTransmission(_parent->getAddress());
             wire.write(value & 0xff);
             wire.write(value >> 8);
-            uint8_t error;
-            if ((error = wire.endTransmission()) != 0) {
-                __Error_printf("_updatePort write()=2 value=%04x error=%u", value, error);
-            }
+            _parent->endTransmission();
+            // uint8_t error;
+            // if ((error = wire.endTransmission()) != 0) {
+            //     __Error_printf("_updatePort write()=2 value=%04x error=%u", value, error);
+            // }
         }
 
         // ------------------------------------------------------------------

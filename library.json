@@ -8,5 +8,11 @@
   "frameworks": "arduino",
   "platforms": [
     "espressif8266"
-  ]
+  ],
+  "build": {
+    "flags": [
+      "-D HAVE_IOEXPANDER=1"
+    ],
+    "libArchive": false
+  }
 }

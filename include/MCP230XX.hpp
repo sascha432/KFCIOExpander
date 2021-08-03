@@ -12,84 +12,89 @@
 
 namespace IOExpander {
 
-    template<DeviceTypeEnum _DeviceType>
-    inline const __FlashStringHelper *MCP23008::__regAddrName(uint8_t addr) {
+    template<typename _DeviceBaseType, typename _DerivedClass, typename _DeviceConfigType>
+    inline const __FlashStringHelper *MCP23008Base<_DeviceBaseType, _DerivedClass, _DeviceConfigType>::__regAddrName(uint8_t addr) const
+    {
         switch(addr) {
-            case MCP23008::IODIR:
+            case IODIR:
                 return F("IODIR");
-            case MCP23008::IPOL:
+            case IPOL:
                 return F("IPOL");
-            case MCP23008::GPINTEN:
+            case GPINTEN:
                 return F("GPINTEN");
-            case MCP23008::DEFVAL:
+            case DEFVAL:
                 return F("DEFVAL");
-            case MCP23008::INTCON:
+            case INTCON:
                 return F("INTCON");
-            case MCP23008::IOCON:
+            case IOCON:
                 return F("IOCON");
-            case MCP23008::GPPU:
+            case GPPU:
                 return F("GPPU");
-            case MCP23008::INTF:
+            case INTF:
                 return F("INTF");
-            case MCP23008::INTCAP:
+            case INTCAP:
                 return F("INTCAP");
-            case MCP23008::GPIO:
+            case GPIO:
                 return F("GPIO");
         }
-        return F("N/A");
+        static char buf[16];
+        snprintf_P(buf, sizeof(buf), PSTR("#0x%02x"), addr);
+        return FPSTR(buf);
     }
 
-    template<DeviceTypeEnum _DeviceType>
-    inline const __FlashStringHelper *MCP23017::__regAddrName(uint8_t addr) {
+    template<typename _DeviceBaseType, typename _DerivedClass, typename _DeviceConfigType>
+    inline const __FlashStringHelper *MCP23017Base<_DeviceBaseType, _DerivedClass, _DeviceConfigType>::__regAddrName(uint8_t addr) const
+    {
         switch(addr) {
-            case MCP23017::IODIR:
+            case IODIR:
                 return F("IODIRA");
-            case MCP23017::IODIR + MCP23017::PORT_BANK_INCREMENT:
+            case IODIR + PORT_BANK_INCREMENT:
                 return F("IODIRB");
-            case MCP23017::IPOL:
+            case IPOL:
                 return F("IPOLA");
-            case MCP23017::IPOL + MCP23017::PORT_BANK_INCREMENT:
+            case IPOL + PORT_BANK_INCREMENT:
                 return F("IPOLB");
-            case MCP23017::GPINTEN:
+            case GPINTEN:
                 return F("GPINTENA");
-            case MCP23017::GPINTEN + MCP23017::PORT_BANK_INCREMENT:
+            case GPINTEN + PORT_BANK_INCREMENT:
                 return F("GPINTENB");
-            case MCP23017::DEFVAL:
+            case DEFVAL:
                 return F("DEFVALA");
-            case MCP23017::DEFVAL + MCP23017::PORT_BANK_INCREMENT:
+            case DEFVAL + PORT_BANK_INCREMENT:
                 return F("DEFVALB");
-            case MCP23017::INTCON:
+            case INTCON:
                 return F("INTCONA");
-            case MCP23017::INTCON + MCP23017::PORT_BANK_INCREMENT:
+            case INTCON + PORT_BANK_INCREMENT:
                 return F("INTCONB");
-            case MCP23017::IOCON:
+            case IOCON:
                 return F("IOCONA");
-            case MCP23017::IOCON + MCP23017::PORT_BANK_INCREMENT:
+            case IOCON + PORT_BANK_INCREMENT:
                 return F("IOCONB");
-            case MCP23017::GPPU:
+            case GPPU:
                 return F("GPPUA");
-            case MCP23017::GPPU + MCP23017::PORT_BANK_INCREMENT:
+            case GPPU + PORT_BANK_INCREMENT:
                 return F("GPPUB");
-            case MCP23017::INTF:
+            case INTF:
                 return F("INTFA");
-            case MCP23017::INTF + MCP23017::PORT_BANK_INCREMENT:
+            case INTF + PORT_BANK_INCREMENT:
                 return F("INTFB");
-            case MCP23017::INTCAP:
+            case INTCAP:
                 return F("INTCAPA");
-            case MCP23017::INTCAP + MCP23017::PORT_BANK_INCREMENT:
+            case INTCAP + PORT_BANK_INCREMENT:
                 return F("INTCAPB");
-            case MCP23017::GPIO:
+            case GPIO:
                 return F("GPIOA");
-            case MCP23017::GPIO + MCP23017::PORT_BANK_INCREMENT:
+            case GPIO + PORT_BANK_INCREMENT:
                 return F("GPIOB");
         }
-        return F("N/A");
+        static char buf[16];
+        snprintf_P(buf, sizeof(buf), PSTR("#0x%02x"), addr);
+        return FPSTR(buf);
     }
 
     template<typename _DeviceBaseType, typename _BaseClass>
     inline MCP230XX<_DeviceBaseType, _BaseClass>::MCP230XX(uint8_t address, TwoWire *wire) :
-        Base(address, wire),
-        _interruptsPending(0)
+        Base(address, wire)
     {
     }
 
@@ -127,16 +132,21 @@ namespace IOExpander {
     }
 
     template<typename _DeviceBaseType, typename _BaseClass>
-    inline bool MCP230XX<_DeviceBaseType, _BaseClass>::analogWrite(uint8_t pin, uint8_t value)
+    inline void MCP230XX<_DeviceBaseType, _BaseClass>::analogWrite(uint8_t pin, int value)
     {
-        return false;
+        return digitalWrite(pin, value);
     }
 
     template<typename _DeviceBaseType, typename _BaseClass>
     inline void MCP230XX<_DeviceBaseType, _BaseClass>::digitalWrite(uint8_t pin, uint8_t value)
     {
         auto pam = _pin2PortAndMask(pin);
-        _GPIO.set(pam.port, pam.mask, value);
+        if (value) {
+            _GPIO[pam.port] |= pam.mask;
+        }
+        else  {
+            _GPIO[pam.port] &= ~pam.mask;
+        }
         _write8(GPIO, _GPIO, pam.port);
     }
 
@@ -145,58 +155,74 @@ namespace IOExpander {
     {
         auto pam = _pin2PortAndMask(pin);
         _read8(GPIO, _GPIO, pam.port);
-        return _GPIO.get(pam.port, pam.mask) ? 1 : 0;
+        return (_GPIO[pam.port] & pam.mask) ? 1 : 0;
     }
 
     template<typename _DeviceBaseType, typename _BaseClass>
     inline uint8_t MCP230XX<_DeviceBaseType, _BaseClass>::_readPortA()
     {
         _read8(GPIO, _GPIO, Port::A);
-        return _GPIO[Port::A];
+        return _GPIO.A;
+        // return _GPIO[Port::A];
     }
 
     template<typename _DeviceBaseType, typename _BaseClass>
     inline uint8_t MCP230XX<_DeviceBaseType, _BaseClass>::_readPortB()
     {
         _read8(GPIO, _GPIO, Port::B);
-        return _GPIO[Port::B];
+        return _GPIO.B;
+        // return _GPIO[Port::B];
     }
 
     template<typename _DeviceBaseType, typename _BaseClass>
     inline uint16_t MCP230XX<_DeviceBaseType, _BaseClass>::_readPortAB()
     {
-        _read(GPIO, _GPIO);
-        return _GPIO;
+        _read8(GPIO, _GPIO, Port::A);
+        _read8(GPIO, _GPIO, Port::B);
+        return _GPIO._value;
     }
 
     template<typename _DeviceBaseType, typename _BaseClass>
     inline void MCP230XX<_DeviceBaseType, _BaseClass>::writePortA(uint8_t value)
     {
-        _GPIO.reset<Port::A>(value);
+        // _GPIO[Port::A] |= (value & _IODIR[Port::A]);
+        _GPIO.A |= (value & _IODIR.A);
         _write8(GPIO, _GPIO, Port::A);
     }
 
     template<typename _DeviceBaseType, typename _BaseClass>
     inline void MCP230XX<_DeviceBaseType, _BaseClass>::writePortB(uint8_t value)
     {
-        _GPIO.reset<Port::B>(value);
+        // _GPIO[Port::B] |= (value & _IODIR[Port::B]);
+        _GPIO.B |= (value & _IODIR.B);
         _write8(GPIO, _GPIO, Port::B);
     }
 
     template<typename _DeviceBaseType, typename _BaseClass>
     inline void MCP230XX<_DeviceBaseType, _BaseClass>::writePortAB(uint16_t value)
     {
-        _GPIO = value;
+        // _GPIO |= (value & _IODIR);
+        _GPIO._value |= (value & _IODIR._value);
         _write(GPIO, _GPIO);
     }
 
     template<typename _DeviceBaseType, typename _BaseClass>
     inline void MCP230XX<_DeviceBaseType, _BaseClass>::pinMode(uint8_t pin, uint8_t mode)
     {
-        __LDBG_printf("pinMode %u=%u", pin, mode);
+        // __LDBG_printf("pinMode %u=%u", pin, mode);
         auto pam = _pin2PortAndMask(pin);
-        _IODIR.set(pam.port, pam.mask, mode != OUTPUT);
-        _GPPU.set(pam.port, pam.mask, mode == INPUT_PULLUP);
+        if (mode == OUTPUT) {
+            _IODIR[pam.port] &= ~pam.mask;
+        }
+        else {
+            _IODIR[pam.port] |= pam.mask;
+        }
+        if (mode == INPUT_PULLUP) {
+            _GPPU[pam.port] |= pam.mask;
+        }
+        else {
+            _GPPU[pam.port] &= ~pam.mask;
+        }
         _write8(IODIR, _IODIR, pam.port);
         _write8(GPPU, _GPPU, pam.port);
     }
@@ -204,30 +230,28 @@ namespace IOExpander {
     template<typename _DeviceBaseType, typename _BaseClass>
     inline void MCP230XX<_DeviceBaseType, _BaseClass>::enableInterrupts(uint16_t pinMask, const InterruptCallback &callback, uint8_t mode, TriggerMode triggerMode)
     {
-        ets_intr_lock();
-        _interruptsPending = 0;
-        _callback = callback;
-        ets_intr_unlock();
-        _IOCON.reset<Port::A>(IOCON_MIRROR);
+        _IOCON.A = IOCON_MIRROR;
         if (triggerMode == TriggerMode::OPEN_DRAIN) {
-            _IOCON.set<Port::A>(IOCON_ODR);
+            _IOCON.A |= IOCON_ODR;
         }
         else if (triggerMode == TriggerMode::ACTIVE_HIGH) {
-            _IOCON.set<Port::A>(IOCON_INTPOL);
+            _IOCON.A |= IOCON_INTPOL;
         }
+        _IOCON.B = _IOCON.A;
         _write8(IOCON, _IOCON, Port::A);
+        _write8(IOCON, _IOCON, Port::B);
 
         if (mode == CHANGE) {
-            _INTCON &= ~pinMask; // interrupt on change
+            _INTCON._value &= ~pinMask; // interrupt on change
         }
         else {
             // setup DEFVAL
             if (mode == FALLING) {
-                _DEFVAL |= pinMask;
+                _DEFVAL._value |= pinMask;
                 _write(DEFVAL, _DEFVAL);
             }
             else if (mode == RISING) {
-                _DEFVAL &= ~pinMask;
+                _DEFVAL._value &= ~pinMask;
                 _write(DEFVAL, _DEFVAL);
             }
             _INTCON._value |= pinMask; // compare against DEFVAL
@@ -236,6 +260,11 @@ namespace IOExpander {
 
         _GPINTEN._value |= pinMask;
         _write(GPINTEN, _GPINTEN);
+
+        ets_intr_lock();
+        _callback = interruptsEnabled() ? callback : nullptr;
+        _timer.detach();
+        ets_intr_unlock();
     }
 
     template<typename _DeviceBaseType, typename _BaseClass>
@@ -245,13 +274,12 @@ namespace IOExpander {
         _write(GPINTEN, _GPINTEN);
 
         if (_GPINTEN._value == 0) {
-            _INTCON = 0;
-            _DEFVAL = 0;
-            _read(INTCAP, _INTCAP); // clear pending interrupts
-            _INTCAP = 0;
+            // _INTCON = 0;
+            // _DEFVAL = 0;
+            // _read(INTCAP, _INTCAP); // clear pending interrupts
 
             ets_intr_lock();
-            _interruptsPending = 0;
+            _timer.detach();
             _callback = nullptr;
             ets_intr_unlock();
         }
@@ -266,69 +294,44 @@ namespace IOExpander {
     template<typename _DeviceBaseType, typename _BaseClass>
     inline void MCP230XX<_DeviceBaseType, _BaseClass>::_write(uint8_t regAddr, Register &regValue)
     {
-        uint8_t error;
-        regAddr = _portAddress<Port::A>(regAddr);
-        _wire->beginTransmission(_address);
-        _wire->write(regAddr);
-        _wire->write(reinterpret_cast<uint8_t *>(&regValue._value), 2);
-        if ((error = _wire->endTransmission(true)) != 0) {
-            __Error_printf("_write reg_addr=%s A=%02x B=%02x error=%u", __regAddrName<kDeviceType>(regAddr), regValue.A, regValue.B, error);
-        }
-        // __LDBG_printf("_write %s A=%02x B=%02x", __regAddrName(regAddr), regValue.A, regValue.B);
+        beginTransmission();
+        writeByte(_portAddress(regAddr, Port::A));
+        writeWordLE(regValue._value);
+        // __LDBG_printf("write %s=A%s B%s", __regAddrName(_portAddress(regAddr, Port::A)), decbin(regValue[Port::A]).c_str(), decbin(regValue[Port::B]).c_str());
+        endTransmission(true);
     }
 
     template<typename _DeviceBaseType, typename _BaseClass>
     inline void MCP230XX<_DeviceBaseType, _BaseClass>::_read(uint8_t regAddr, Register &regValue)
     {
-        uint8_t error;
-        regAddr = _portAddress(regAddr, Port::A);
-        _wire->beginTransmission(_address);
-        _wire->write(regAddr);
-        if ((error = _wire->endTransmission(false)) != 0) {
-            __Error_printf("_read write()=1 reg_addr=%s error=%u", __regAddrName<kDeviceType>(regAddr), error);
-            return;
+        beginTransmission();
+        writeByte(_portAddress(regAddr, Port::A));
+        if (endTransmission(false) && requestFrom(2, true)) {
+            regValue.A = readByte();
+            regValue.B = readByte();
         }
-        if (_wire->requestFrom(_address, 2U, true) != 2) {
-            __Error_printf("_read requestFrom()=2 reg_addr=%s available=%u", __regAddrName<kDeviceType>(regAddr), _wire->available());
-            return;
-        }
-        _wire->readBytes(reinterpret_cast<uint8_t *>(&regValue._value), 2);
         // __LDBG_printf("_read reg_addr=%s A=%02x B=%02x", __regAddrName(regAddr), regValue.A, regValue.B);
     }
 
     template<typename _DeviceBaseType, typename _BaseClass>
     inline void MCP230XX<_DeviceBaseType, _BaseClass>::_write8(uint8_t regAddr, Register regValue, Port port)
     {
-        uint8_t error;
-        auto source = regValue[port];
-        regAddr = _portAddress(regAddr, port);
-        _wire->beginTransmission(_address);
-        _wire->write(regAddr);
-        _wire->write(source);
-        if ((error = _wire->endTransmission(true)) != 0) {
-            __Error_printf("_write8 write()=2 reg_addr=%s value=%02x error=%u", __regAddrName<kDeviceType>(regAddr), source, error);
-        }
-        // __LDBG_printf("_write8 reg_addr=%s %c=%02x", __regAddrName(regAddr), port == Port::A ? 'A' : 'B', source);
+        beginTransmission();
+        writeByte(_portAddress(regAddr, port));
+        writeByte(regValue[port]);
+        // __LDBG_printf("write %s=%c%s", __regAddrName(_portAddress(regAddr, port)), port == Port::A ? 'A' : 'B', decbin(regValue[port]).c_str());
+        endTransmission(true);
     }
 
     template<typename _DeviceBaseType, typename _BaseClass>
     inline void MCP230XX<_DeviceBaseType, _BaseClass>::_read8(uint8_t regAddr, Register &regValue, Port port)
     {
-        uint8_t error;
-        auto &target = regValue[port];
-        _wire->beginTransmission(_address);
-        regAddr = _portAddress(regAddr, port);
-        _wire->write(regAddr);
-        if ((error = _wire->endTransmission(false)) != 0) {
-            __Error_printf("_read8 write()=1 reg_addr=%s error=%u", __regAddrName<kDeviceType>(regAddr), error);
-            return;
+        beginTransmission();
+        writeByte(_portAddress(regAddr, port));
+        if (endTransmission(false) && requestFrom(1, true)) {
+            regValue[port] = readByte();
         }
-        if (_wire->requestFrom(_address, 1U, true) != 1) {
-            __Error_printf("_read8 requestFrom()=1 reg_addr=%s available=%u", __regAddrName<kDeviceType>(regAddr), _wire->available());
-            return;
-        }
-        target = _wire->read();
-        // __LDBG_printf("_read8 reg_addr=%s %c=%02x", __regAddrName(regAddr), port == Port::A ? 'A' : 'B', target);
+        // __LDBG_printf("_read8 reg_addr=%s %c=%s", __regAddrName(regAddr), port == Port::A ? 'A' : 'B', decbin(regValue[port]).c_str());
     }
 
 }

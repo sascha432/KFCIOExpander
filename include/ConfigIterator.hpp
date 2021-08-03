@@ -31,7 +31,12 @@ namespace IOExpander {
     template<bool _HtmlOutput>
     void ConfigIterator<_ConfigType>::printStatus(Print &output)
     {
-        _printStatusRecursive<_HtmlOutput>(output);
+        if __CONSTEXPR17 (_HtmlOutput) {
+            _printStatusRecursive(output);
+        }
+        else {
+            _printStatusHtmlRecursive(output);
+        }
     }
 
     template<typename _ConfigType>
@@ -104,9 +109,9 @@ namespace IOExpander {
 
     template<typename _ConfigType>
     inline  __attribute__((__always_inline__))
-    auto ConfigIterator<_ConfigType>::getDeviceByPin(uint8_t pin) -> decltype(&_device)
+    auto ConfigIterator<_ConfigType>::getDeviceByType(DeviceTypeEnum type) -> decltype(&_device)
     {
-        return (_pinMatch(pin)) ? &_device : _next.getDeviceByPin(pin);
+        return (_device.kDeviceType == type) ? &_device : _next.getDeviceByType(type);
     }
 
     template<typename _ConfigType>
@@ -118,7 +123,7 @@ namespace IOExpander {
     template<typename _ConfigType>
     void ConfigIterator<_ConfigType>::attachInterrupt(uint8_t gpioPin, void *device, uint16_t pinMask, const InterruptCallback &callback, uint8_t mode, TriggerMode triggerMode)
     {
-        __LDBG_printf("attachInterrupt gpio=%u device=%p mode=%u trigger_mode=%u", gpioPin, device, mode, triggerMode);
+        // __LDBG_printf("attachInterrupt gpio=%u device=%p mode=%u trigger_mode=%u", gpioPin, device, mode, triggerMode);
         _attachInterruptRecursive(device, gpioPin, pinMask, callback, mode, triggerMode);
     }
 
@@ -150,35 +155,37 @@ namespace IOExpander {
     }
 
     template<typename _ConfigType>
-    template<bool _HtmlOutput>
     inline  __attribute__((__always_inline__))
     void ConfigIterator<_ConfigType>::_printStatusRecursive(Print &output)
     {
-        if __CONSTEXPR17 (_HtmlOutput) {
-            output.printf_P(PSTR(HTML_S(div) "%s @ I2C address 0x%02x"), _device.getDeviceName(), _device.getAddress());
-            if __CONSTEXPR17 (DeviceType::kHasIsConnected) {
-                if (!_device.isConnected()) {
-                    output.print(F(HTML_S(br) "ERROR - Device not found!"));
-                }
+        output.printf_P(PSTR("%s @ I2C address 0x%02x, pin %u-%u, interrupts %s"),
+            _device.getDeviceName(),
+            _device.getAddress(),
+            DeviceConfigType::kBeginPin,
+            DeviceConfigType::kEndPin - 1,
+            _device.interruptsEnabled() ? PSTR("enabled") : PSTR("disabled")
+        );
+        if __CONSTEXPR17 (DeviceType::kHasIsConnected) {
+            if (!_device.isConnected()) {
+                output.print(F(" (ERROR - Device not found!)"));
             }
-            output.print(F(HTML_E(div)));
         }
-        else {
-            output.printf_P(PSTR("%s @ I2C address 0x%02x, pin %u-%u, interrupts %s"),
-                _device.getDeviceName(),
-                _device.getAddress(),
-                DeviceConfigType::kBeginPin,
-                DeviceConfigType::kEndPin - 1,
-                _device.interruptsEnabled() ? PSTR("enabled") : PSTR("disabled")
-            );
-            if __CONSTEXPR17 (DeviceType::kHasIsConnected) {
-                if (!_device.isConnected()) {
-                    output.print(F(" (ERROR - Device not found!)"));
-                }
+        output.println();
+        _next._printStatusRecursive(output);
+    }
+
+    template<typename _ConfigType>
+    inline  __attribute__((__always_inline__))
+    void ConfigIterator<_ConfigType>::_printStatusHtmlRecursive(Print &output)
+    {
+        output.printf_P(PSTR(HTML_S(div) "%s @ I2C address 0x%02x"), _device.getDeviceName(), _device.getAddress());
+        if __CONSTEXPR17 (DeviceType::kHasIsConnected) {
+            if (!_device.isConnected()) {
+                output.print(F(HTML_S(br) "ERROR - Device not found!"));
             }
-            output.println();
         }
-        _next._printStatusRecursive<_HtmlOutput>(output);
+        output.print(F(HTML_E(div)));
+        _next._printStatusHtmlRecursive(output);
     }
 
     template<typename _ConfigType>
@@ -198,7 +205,7 @@ namespace IOExpander {
     void ConfigIterator<_ConfigType>::_pinModeRecursive(uint8_t pin, uint8_t mode)
     {
         if (DeviceConfigType::pinMatch(pin)) {
-            _device.pinMode(pin, mode);
+            _device.pinMode(pin - DeviceConfigType::kBeginPin, mode);
             return;
         }
         _next._pinModeRecursive(pin, mode);
@@ -209,7 +216,7 @@ namespace IOExpander {
     void ConfigIterator<_ConfigType>::_digitalWriteRecursive(uint8_t pin, uint8_t val)
     {
         if (DeviceConfigType::pinMatch(pin)) {
-            _device.digitalWrite(pin, val);
+            _device.digitalWrite(pin - DeviceConfigType::kBeginPin, val);
             return;
         }
         _next._digitalWriteRecursive(pin, val);
@@ -220,7 +227,7 @@ namespace IOExpander {
     int ConfigIterator<_ConfigType>::_digitalReadRecursive(uint8_t pin)
     {
         if (DeviceConfigType::pinMatch(pin)) {
-            return _device.digitalRead(pin);
+            return _device.digitalRead(pin - DeviceConfigType::kBeginPin);
         }
         return _next._digitalReadRecursive(pin);
     }
@@ -230,7 +237,7 @@ namespace IOExpander {
     int ConfigIterator<_ConfigType>::_analogReadRecursive(uint8_t pin)
     {
         if (DeviceConfigType::pinMatch(pin)) {
-            return _device.analogRead(pin);
+            return _device.analogRead(pin - DeviceConfigType::kBeginPin);
         }
         return _next._analogReadRecursive(pin);
     }
@@ -248,7 +255,7 @@ namespace IOExpander {
     void ConfigIterator<_ConfigType>::_analogWriteRecursive(uint8_t pin, int val)
     {
         if (DeviceConfigType::pinMatch(pin)) {
-            _device.analogWrite(pin, val);
+            _device.analogWrite(pin - DeviceConfigType::kBeginPin, val);
             return;
         }
         _next._analogWriteRecursive(pin, val);
@@ -295,8 +302,8 @@ namespace IOExpander {
                 if __CONSTEXPR17 (DeviceType::kIntPinMode) {
                     ::pinMode(gpioPin, DeviceType::kIntPinMode);
                 }
-                static_assert(DeviceType::kIntTriggerMode != TriggerMode::NONE, "interrupts not available");
-                __LDBG_printf("attachInterruptArg device=%s gpio=%u mode=%u", _device.getDeviceName(), gpioPin, triggerMode, _triggerMode2IntMode(triggerMode));
+                // static_assert(DeviceType::kIntTriggerMode != TriggerMode::NONE, "interrupts not available");
+                // __LDBG_printf("attachInterruptArg device=%s gpio=%u mode=%u pin_mode=%u", _device.getDeviceName(), gpioPin, triggerMode, _triggerMode2IntMode(triggerMode), DeviceType::kIntPinMode);
                 ::attachInterruptArg(gpioPin, __interruptHandler, device, _triggerMode2IntMode(triggerMode));
             }
             return;

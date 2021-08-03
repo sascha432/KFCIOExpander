@@ -132,6 +132,26 @@ device.pinMode(uint8_t pin, uint8_t mode);
 
 Interrupts are device based and require a dedicated GPIO pin to receive the interrupts.
 
+
+```c++
+// high priority interrupt handler, not an ISR though
+// reading from I2C is possible
+// delay is not allowed and the function should return within 5-10 milliseconds or
+// use schedule_function() to handle the interrupt in the main loop
+void handler(uint16_t pinState)
+{
+    Serial.printf_P(PSTR("interrupt port=%s\n"), decbin(static_cast<uint8_t>(pinState)).c_str());
+}
+
+auto &mcp = *IOExpander::config.getDeviceByAddress(0x27);
+
+// enable interrupts and monitor all pins
+IOExpander::config.attachInterrupt(14, &mcp, 0xffff, handler, RISING, IOExpander::TriggerMode::DEVICE_DEFAULT);
+
+// disable interrupts for the entire device
+IOExpander::config.detachInterrupt(14, &mcp);
+```
+
 ....documentation **TODO**
 examples can be found in the `examples/` directory
 

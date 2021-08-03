@@ -14,13 +14,8 @@
 #include <PrintHtmlEntities.h>
 #endif
 
-
 #ifndef HAVE_IOEXPANDER
-#   if HAVE_PCF8574 || HAVE_TINYPWM || HAVE_MCP23017 || HAVE_MCP23008 || HAVE_PCA9685 || HAVE_NEOPIXEL
-#       define HAVE_IOEXPANDER 1
-#   else
-#       define HAVE_IOEXPANDER 0
-#   endif
+#error HAVE_IOEXPANDER not set
 #endif
 
 #if HAVE_IOEXPANDER
@@ -28,7 +23,7 @@
 // enable debugging
 // to disable error messages set IOEXPANDER_DEFAULT_OUTPUT=nullptr
 #ifndef DEBUG_IOEXPANDER
-#define DEBUG_IOEXPANDER 0
+#define DEBUG_IOEXPANDER 1
 #endif
 
 // stream for debugging output
@@ -208,8 +203,8 @@ namespace IOExpander {
 
     struct ConfigEndIterator {
         void _beginRecursive(TwoWire &wire);
-        template<bool _HtmlOutput>
         void _printStatusRecursive(Print &output);
+        void _printStatusHtmlRecursive(Print &output);
         constexpr size_t _sizeRecursive() const;
         void _pinModeRecursive(uint8_t pin, uint8_t mode);
         void _digitalWriteRecursive(uint8_t pin, uint8_t val);
@@ -220,6 +215,7 @@ namespace IOExpander {
         void _analogWriteFreqRecursive(uint32_t freq);
         void *_getDevicePointerRecursive(uint8_t pin);
         nullptr_t getDeviceByAddress(uint8_t address);
+        nullptr_t getDeviceByType(DeviceTypeEnum type);
         nullptr_t getDeviceByPin(uint8_t pin);
         constexpr bool _pinMatch(uint8_t pin) const;
         bool interruptsEnabled();
@@ -281,6 +277,7 @@ namespace IOExpander {
         void *getDevicePointer(uint8_t pin);
 
         auto getDeviceByAddress(uint8_t address) -> decltype(&_device);
+        auto getDeviceByType(DeviceTypeEnum type) -> decltype(&_device);
         auto getDeviceByPin(uint8_t pin) -> decltype(&_device);
 
         // return true if any device has interrupts enabled
@@ -304,8 +301,8 @@ namespace IOExpander {
         // recursive methods
         void _beginRecursive(TwoWire &wire);
         void _dumpPinsRecursive(Print &output);
-        template<bool _HtmlOutput>
         void _printStatusRecursive(Print &output);
+        void _printStatusHtmlRecursive(Print &output);
         constexpr size_t _sizeRecursive() const;
         constexpr bool _pinMatch(uint8_t pin) const;
         void _pinModeRecursive(uint8_t pin, uint8_t mode);
@@ -387,6 +384,65 @@ namespace IOExpander {
 
         constexpr const __FlashStringHelper *getDeviceName() {
             return IOExpander::getDeviceName<DeviceType>();
+        }
+
+        void beginTransmission() {
+            _wire->beginTransmission(getAddress());
+        }
+
+        bool endTransmission(bool stop = true) {
+            uint8_t error;
+            // __LDBG_printf("transmit stop=%u", stop);
+            if ((error = _wire->endTransmission(stop)) == 0) {
+                return true;
+            }
+            __DBG_printf("end_transmission error=%u stop=%u", error, stop);
+            return false;
+        }
+
+        bool requestFrom(uint8_t len, bool stop = true) {
+            // __LDBG_printf("request=%u stop=%u", len, stop);
+            auto rLen = static_cast<uint8_t>(_wire->requestFrom(getAddress(), len, static_cast<uint8_t>(stop)));
+            if (rLen == len) {
+                return true;
+            }
+            __DBG_printf("request_from failed len=%u<>%u stop=%u", len, rLen, stop);
+            return false;
+        }
+
+        void writeByte(uint8_t value) {
+            // __LDBG_printf("write8=%s(0x%02x)", decbin(value).c_str(), value);
+            _wire->write(value);
+        }
+
+        void write(const uint8_t *buf, size_t len) {
+            _wire->write(buf, len);
+        }
+
+        void writeWordLE(uint16_t value) {
+            // __LDBG_printf("write16LE=%s", decbin(value).c_str());
+            writeByte(value & 0xff);
+            writeByte(value >> 8);
+        }
+
+        void writeWordBE(uint16_t value) {
+            // __LDBG_printf("write16BE=%s", decbin(value).c_str());
+            writeByte(value >> 8);
+            writeByte(value & 0xff);
+        }
+
+        uint8_t readByte() {
+            return _wire->read();
+        }
+
+        uint16_t readWordLE() {
+            uint8_t lo = _wire->read();
+            return lo | (_wire->read() << 8);
+        }
+
+        uint16_t readWordBE() {
+            uint8_t hi = _wire->read();
+            return (hi << 8) | _wire->read();
         }
 
     protected:

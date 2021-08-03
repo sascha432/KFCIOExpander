@@ -41,28 +41,36 @@ namespace IOExpander {
             Register16() : _value(0) {}
             Register16(uint16_t value) : _value(value) {}
 
+            // operator uint8_t *() {
+            //     return reinterpret_cast<uint8_t *>(this);
+            // }
+
+            // operator const uint8_t *() const {
+            //     return reinterpret_cast<const uint8_t *>(this);
+            // }
+
             inline  __attribute__((__always_inline__))
             operator uint16_t() const {
                 return _value;
             }
 
-            inline  __attribute__((__always_inline__))
-            Register16 &operator =(uint16_t value) {
-                _value = value;
-                return *this;
-            }
+            // inline  __attribute__((__always_inline__))
+            // Register16 &operator =(uint16_t value) {
+            //     _value = value;
+            //     return *this;
+            // }
 
-            inline  __attribute__((__always_inline__))
-            Register16 &operator |=(uint16_t value) {
-                _value |= value;
-                return *this;
-            }
+            // inline  __attribute__((__always_inline__))
+            // Register16 &operator |=(uint16_t value) {
+            //     _value |= value;
+            //     return *this;
+            // }
 
-            inline  __attribute__((__always_inline__))
-            Register16 &operator &=(uint16_t value) {
-                _value &= value;
-                return *this;
-            }
+            // inline  __attribute__((__always_inline__))
+            // Register16 &operator &=(uint16_t value) {
+            //     _value &= value;
+            //     return *this;
+            // }
 
             // 8bit operations
 
@@ -76,54 +84,54 @@ namespace IOExpander {
                 return port == Port::A ? A : B;
             }
 
-            inline  __attribute__((__always_inline__))
-            uint8_t get(Port port, uint8_t mask) {
-                return (*this)[port] & mask;
-            }
+            // inline  __attribute__((__always_inline__))
+            // uint8_t get(Port port, uint8_t mask) {
+            //     return operator[](port) & mask;
+            // }
 
-            inline  __attribute__((__always_inline__))
-            void set(Port port, uint8_t mask) {
-                (*this)[port] |= mask;
-            }
+            // inline  __attribute__((__always_inline__))
+            // void set(Port port, uint8_t mask) {
+            //     operator[](port) |= mask;
+            // }
 
-            inline  __attribute__((__always_inline__))
-            void unset(Port port, uint8_t mask) {
-                (*this)[port] &= ~mask;
-            }
+            // inline  __attribute__((__always_inline__))
+            // void unset(Port port, uint8_t mask) {
+            //     operator[](port) &= ~mask;
+            // }
 
-            inline  __attribute__((__always_inline__))
-            void set(Port port, uint8_t mask, bool value) {
-                if (value) {
-                    set(port, mask);
-                }
-                else {
-                    unset(port, mask);
-                }
-            }
+            // inline  __attribute__((__always_inline__))
+            // void set(Port port, uint8_t mask, bool value) {
+            //     if (value) {
+            //         set(port, mask);
+            //     }
+            //     else {
+            //         unset(port, mask);
+            //     }
+            // }
 
-            template<Port _Port>
-            inline  __attribute__((__always_inline__))
-            uint8_t get(uint8_t mask) {
-                return (_Port == Port::A ? A : B) & mask;
-            }
+            // template<Port _Port>
+            // inline  __attribute__((__always_inline__))
+            // uint8_t get(uint8_t mask) {
+            //     return (_Port == Port::A ? A : B) & mask;
+            // }
 
-            template<Port _Port>
-            inline  __attribute__((__always_inline__))
-            void reset(uint8_t value) {
-                (_Port == Port::A ? A : B) = value;
-            }
+            // template<Port _Port>
+            // inline  __attribute__((__always_inline__))
+            // void reset(uint8_t value) {
+            //     (_Port == Port::A ? A : B) = value;
+            // }
 
-            template<Port _Port>
-            inline  __attribute__((__always_inline__))
-            void set(uint8_t mask) {
-                (_Port == Port::A ? A : B) |= mask;
-            }
+            // template<Port _Port>
+            // inline  __attribute__((__always_inline__))
+            // void set(uint8_t mask) {
+            //     (_Port == Port::A ? A : B) |= mask;
+            // }
 
-            template<Port _Port>
-            inline  __attribute__((__always_inline__))
-            void unset(uint8_t mask) {
-                (_Port == Port::A ? A : B) &= ~mask;
-            }
+            // template<Port _Port>
+            // inline  __attribute__((__always_inline__))
+            // void unset(uint8_t mask) {
+            //     (_Port == Port::A ? A : B) &= ~mask;
+            // }
         };
 
         struct Register8 {
@@ -217,16 +225,26 @@ namespace IOExpander {
 
     }
 
-    template<typename _DeviceBaseType, typename _DerivedClass>
-    class MCP23008Base : public Base<_DeviceBaseType, _DerivedClass, NullConfig>  {
+    template<typename _DeviceBaseType, typename _DerivedClass, typename _DeviceConfigType>
+    class MCP23008Base : public Base<_DeviceBaseType, _DerivedClass, _DeviceConfigType>  {
     public:
-        using BaseClass = Base<_DeviceBaseType, _DerivedClass, NullConfig>;
+        using BaseClass = Base<_DeviceBaseType, _DerivedClass, _DeviceConfigType>;
         using BaseClass::Base;
         using DeviceType = typename BaseClass::DeviceType;
         using DeviceClassType = typename BaseClass::DeviceClassType;
         using BaseClass::begin;
         using BaseClass::kDefaultAddress;
         using BaseClass::kDeviceType;
+        using BaseClass::beginTransmission;
+        using BaseClass::endTransmission;
+        using BaseClass::requestFrom;
+        using BaseClass::writeByte;
+        using BaseClass::writeWordLE;
+        using BaseClass::writeWordBE;
+        using BaseClass::readByte;
+        using BaseClass::readWordLE;
+        using BaseClass::readWordBE;
+        using DataType = uint8_t;
         using Port = MCP230XXHelpers::Port;
         using PortAndMask = MCP230XXHelpers::PortAndMask8;
         using Register = MCP230XXHelpers::Register8;
@@ -263,18 +281,30 @@ namespace IOExpander {
         constexpr uint8_t _portAddress(uint8_t regAddr) const {
             return regAddr;
         }
+
+        const __FlashStringHelper *__regAddrName(uint8_t addr) const;
     };
 
-    template<typename _DeviceBaseType, typename _DerivedClass>
-    class MCP23017Base : public Base<_DeviceBaseType, _DerivedClass, NullConfig>  {
+    template<typename _DeviceBaseType, typename _DerivedClass, typename _DeviceConfigType>
+    class MCP23017Base : public Base<_DeviceBaseType, _DerivedClass, _DeviceConfigType>  {
     public:
-        using BaseClass = Base<_DeviceBaseType, _DerivedClass, NullConfig>;
+        using BaseClass = Base<_DeviceBaseType, _DerivedClass, _DeviceConfigType>;
         using BaseClass::Base;
         using DeviceType = typename BaseClass::DeviceType;
         using DeviceClassType = typename BaseClass::DeviceClassType;
         using BaseClass::begin;
         using BaseClass::kDefaultAddress;
         using BaseClass::kDeviceType;
+        using BaseClass::beginTransmission;
+        using BaseClass::endTransmission;
+        using BaseClass::requestFrom;
+        using BaseClass::writeByte;
+        using BaseClass::writeWordLE;
+        using BaseClass::writeWordBE;
+        using BaseClass::readByte;
+        using BaseClass::readWordLE;
+        using BaseClass::readWordBE;
+        using DataType = uint16_t;
         using Port = MCP230XXHelpers::Port;
         using PortAndMask = MCP230XXHelpers::PortAndMask16;
         using Register = MCP230XXHelpers::Register16;
@@ -302,10 +332,12 @@ namespace IOExpander {
         // get port for pin # and mask
         constexpr PortAndMask _pin2PortAndMask(uint8_t pin) const {
             if (pin < 8) {
+                // __DBG_printf("_pin2PortAndMask(%u)=A%s", pin, decbin((uint8_t)_BV(pin)).c_str());
                 return PortAndMask(Port::A, _BV(pin));
             }
             else {
-                return PortAndMask(Port::B, _BV(pin - 8));
+                // __DBG_printf("_pin2PortAndMask(%u)=B%s", pin, decbin((uint8_t)_BV((pin-8))).c_str());
+                return PortAndMask(Port::B, _BV((pin - 8)));
             }
         }
 
@@ -320,6 +352,7 @@ namespace IOExpander {
             return (_Port == Port::A) ? regAddr : regAddr + PORT_BANK_INCREMENT;
         }
 
+        const __FlashStringHelper *__regAddrName(uint8_t addr) const;
     };
 
     template<typename _DeviceBaseType, typename _BaseClass>
@@ -329,9 +362,19 @@ namespace IOExpander {
         using Base::Base;
         using DeviceType = typename Base::DeviceType;
         using DeviceClassType = typename Base::DeviceClassType;
+        using DataType = typename Base::DataType;
         using Base::begin;
         using Base::kDefaultAddress;
         using Base::kDeviceType;
+        using Base::beginTransmission;
+        using Base::endTransmission;
+        using Base::requestFrom;
+        using Base::writeByte;
+        using Base::writeWordLE;
+        using Base::writeWordBE;
+        using Base::readByte;
+        using Base::readWordLE;
+        using Base::readWordBE;
         using Base::IODIR;
         using Base::IPOL;
         using Base::GPINTEN;
@@ -347,10 +390,30 @@ namespace IOExpander {
         using Base::_pin2Port;
         using Base::_pin2PortAndMask;
         using Base::_portAddress;
-        using Port = MCP230XXHelpers::Port;
+        using Base::__regAddrName;
+        using Port = typename Base::Port;
         using PortAndMask = typename Base::PortAndMask;
-        using RegisterWidth = typename std::conditional<DeviceType::kNumPins == 8, uint8_t, uint16_t>::type;
+        // using RegisterWidth = typename std::conditional<DeviceType::kNumPins == 8, uint8_t, uint16_t>::type;
         using Register = typename Base::Register;
+
+    public:
+        static constexpr uint8_t PA0 = 0;
+        static constexpr uint8_t PA1 = 1;
+        static constexpr uint8_t PA2 = 2;
+        static constexpr uint8_t PA3 = 3;
+        static constexpr uint8_t PA4 = 4;
+        static constexpr uint8_t PA5 = 5;
+        static constexpr uint8_t PA6 = 6;
+        static constexpr uint8_t PA7 = 7;
+
+        static constexpr uint8_t PB0 = 8;
+        static constexpr uint8_t PB1 = 9;
+        static constexpr uint8_t PB2 = 10;
+        static constexpr uint8_t PB3 = 11;
+        static constexpr uint8_t PB4 = 12;
+        static constexpr uint8_t PB5 = 13;
+        static constexpr uint8_t PB6 = 14;
+        static constexpr uint8_t PB7 = 15;
 
     public:
         // INTPOL: This bit sets the polarity of the INT output pin
@@ -385,7 +448,7 @@ namespace IOExpander {
         void begin(uint8_t address);
 
         int analogRead(uint8_t pinNo);
-        bool analogWrite(uint8_t pin, uint8_t value);
+        void analogWrite(uint8_t pin, int value);
 
         void digitalWrite(uint8_t pin, uint8_t value);
         uint8_t digitalRead(uint8_t pin);
@@ -394,42 +457,37 @@ namespace IOExpander {
         uint8_t _readPortB();
         uint16_t _readPortAB();
 
-        template<typename _T = uint8_t>
-        typename std::enable_if<std::is_same<_T, uint8_t>::value && (DeviceType::kNumPins == 8), uint8_t>::type readPortA() {
-            return _readPortA();
-        }
-        template<typename _T = uint8_t>
-        typename std::enable_if<std::is_same<_T, uint8_t>::value && (DeviceType::kNumPins == 8), uint8_t>::type readPortB() {
+        uint8_t readPortA() {
             return _readPortA();
         }
 
-        template<typename _T = uint8_t>
-        typename std::enable_if<std::is_same<_T, uint8_t>::value && (DeviceType::kNumPins == 8), uint8_t>::type readPortAB() {
-            return _readPortA();
-        }
-
-        template<typename _T = uint8_t>
-        typename std::enable_if<std::is_same<_T, uint8_t>::value && (DeviceType::kNumPins == 8), uint8_t>::type readPort() {
-            return _readPortA();
-        }
-
-        template<typename _T = uint8_t>
-        typename std::enable_if<std::is_same<_T, uint8_t>::value && (DeviceType::kNumPins == 16), uint8_t>::type readPortA() {
-            return _readPortA();
-        }
-        template<typename _T = uint8_t>
-        typename std::enable_if<std::is_same<_T, uint8_t>::value && (DeviceType::kNumPins == 16), uint8_t>::type readPortB() {
+        uint8_t readPortB() {
             return _readPortB();
         }
 
-        template<typename _T = uint16_t>
-        typename std::enable_if<std::is_same<_T, uint8_t>::value && (DeviceType::kNumPins == 16), uint16_t>::type readPortAB() {
+        uint16_t readPort() {
             return _readPortAB();
         }
 
-        template<typename _T = uint16_t>
-        typename std::enable_if<std::is_same<_T, uint16_t>::value && (DeviceType::kNumPins == 16), uint16_t>::type readPort() {
+        uint16_t readPortAB() {
             return _readPortAB();
+        }
+
+        uint8_t readIntCapA() {
+            return Register(readIntCapAB()).A;
+        }
+
+        uint8_t readIntCapB() {
+            return Register(readIntCapAB()).B;
+        }
+
+        uint16_t readIntCap() {
+            return readIntCapAB();
+        }
+
+        uint16_t readIntCapAB() {
+            _read(INTCAP, _INTCAP);
+            return _INTCAP._value;
         }
 
         void writePortA(uint8_t value);
@@ -444,7 +502,6 @@ namespace IOExpander {
         void pinMode(uint8_t pin, uint8_t mode);
 
         void analogReference(uint8_t mode) {}
-        void analogWrite(uint8_t pin, int val) {}
         void analogWriteFreq(uint32_t freq) {}
 
         // currently only mirrored interrupts for port A&B are supported
@@ -452,57 +509,53 @@ namespace IOExpander {
         void disableInterrupts(uint16_t pinMask);
         bool interruptsEnabled();
 
-        // template<typename _DeviceBaseType, typename _BaseClass>
-        // inline void MCP230XX<_DeviceBaseType, _BaseClass>::invokeCallback()
-        // {
-        //     // read captured ports that have PINs with interrupts
-        //     if (_GPINTEN[Port::A] && _GPINTEN[Port::B]) {
-        //         _read(INTCAP, _INTCAP);
-        //     }
-        //     else if (_GPINTEN[Port::A]) {
-        //         _read8(INTCAP, _INTCAP, Port::A);
-        //     }
-        //     if (_GPINTEN[Port::B]) {
-        //         _read8(INTCAP, _INTCAP, Port::B);
-        //     }
-        //     auto port = Register(readPortAB());
-
-        //     // ::printf("INTCAP A=%02x B=%02X PORT A=%02x B=%02X\n", _INTCAP[Port::A], _INTCAP[Port::B], port[Port::A], port[Port::B]);
-
-        //     _callback(static_cast<uint16_t>(_INTCAP)); // TODO read captured pin state
-        // }
-
-
         inline  __attribute__((__always_inline__))
         bool interruptHandler() {
-            // readPort();
-            // auto mask = _intMode._captured;
-            // if (mask) {
-            //     _callback(mask);
-            //     _intMode._captured &= ~mask;
+            // Serial.println(millis());
+            // Serial.printf("GPINTEN=%s\n", decbin(_GPINTEN._value).c_str());
+            // _read(INTCAP, _INTCAP);
+            // Serial.printf("INTCAP=%s\n", decbin(_INTCAP._value).c_str());
+            //
+            // Serial.printf("INTF=%s\n", decbin(_INTF._value).c_str());
+            // auto value = readPort();
+            // Serial.printf("PORT=%s\n", decbin(value).c_str());
+            _INTF = 0;
+            if (_GPINTEN.A && _GPINTEN.B) {
+                _read(INTF, _INTF);
+            }
+            else if (_GPINTEN.A) {
+                _read8(INTF, _INTF, Port::A);
+            }
+            else if (_GPINTEN.B) {
+                _read8(INTF, _INTF, Port::B);
+            }
+            _callback(_INTF._value);
+            // if (_INTF.A) {
+            //     _read8(INTCAP, _INTCAP, Port::A);
             // }
-            // if (_intMode._captured == 0) {
-            //     return false;
+            // if (_INTF.B) {
+            //     _read8(INTCAP, _INTCAP, Port::B);
             // }
             return false;
         }
 
         inline  __attribute__((__always_inline__))
         void ISRHandler() {
-            if (!_timer) {
-                _timer.setCallback([this]() {
-                    return this->interruptHandler();
-                });
-                _timer.start(100);
-            }
+            interruptHandler();
+
+            // if (!_timer) {
+            //     _timer.setCallback([this]() {
+            //         return this->interruptHandler();
+            //     });
+            //     #if IOEXPANDER_INTERRUPT_MICROS_TIMER
+            //         _timer.start(333);
+            //     #else
+            //         _timer.start(1);
+            //     #endif
+            // }
         }
 
-        template<DeviceTypeEnum _DeviceType>
-        const __FlashStringHelper *__regAddrName(uint8_t addr) {
-            return F("N/A");
-        }
-
-    protected:
+    // protected:
         // write 16 bit register
         void _write(uint8_t regAddr, Register &regValue);
         // read 16 bit register
@@ -516,9 +569,8 @@ namespace IOExpander {
         InterruptCallback _callback;
         Timer _timer;
         // InterruptMode _intMode;
-        uint32_t _interruptsPending;
 
-    protected:
+    // protected:
         Register _IODIR;
         Register _GPPU;
         Register _GPIO;
@@ -527,20 +579,16 @@ namespace IOExpander {
         Register _INTCON;
         Register _DEFVAL;
         Register _INTCAP;
-        // Register _INTF;
+        Register _INTF;
         // Register _IPOL;
     };
 
-    class MCP23008 : public MCP230XX<DeviceTypeMCP23008, MCP23008Base<DeviceTypeMCP23008, MCP23008>> {
+    class MCP23008 : public MCP230XX<DeviceTypeMCP23008, MCP23008Base<DeviceTypeMCP23008, MCP23008, NullConfig>> {
     public:
-        template<DeviceTypeEnum _DeviceType>
-        const __FlashStringHelper *__regAddrName(uint8_t addr);
     };
 
-    class MCP23017 : public MCP230XX<DeviceTypeMCP23017, MCP23017Base<DeviceTypeMCP23017, MCP23017>> {
+    class MCP23017 : public MCP230XX<DeviceTypeMCP23017, MCP23017Base<DeviceTypeMCP23017, MCP23017, NullConfig>> {
     public:
-        template<DeviceTypeEnum _DeviceType>
-        const __FlashStringHelper *__regAddrName(uint8_t addr);
     };
 
 }
