@@ -32,10 +32,10 @@ namespace IOExpander {
     void ConfigIterator<_ConfigType>::printStatus(Print &output)
     {
         if __CONSTEXPR17 (_HtmlOutput) {
-            _printStatusRecursive(output);
+            _printStatusHtmlRecursive(output);
         }
         else {
-            _printStatusHtmlRecursive(output);
+            _printStatusRecursive(output);
         }
     }
 

@@ -23,7 +23,6 @@ namespace IOExpander {
         enum class Commands : uint8_t {
             ANALOG_READ = 0x11,
             ANALOG_WRITE = 0x12,
-            ANALOG_WRITE_V0_0_2 = 0x10,
             DIGITAL_READ = 0x13,
             DIGITAL_WRITE = 0x14,
             PIN_MODE = 0x15,
@@ -46,9 +45,6 @@ namespace IOExpander {
                             uint8_t pin;            // internal pin number
                             uint8_t pwmValue;
                         } ANALOG_WRITE;
-                        struct {
-                            uint8_t pwmValue;
-                        } ANALOG_WRITE_V0_0_2;
                         struct {
                             uint8_t pin;            // internal pin number
                         } ANALOG_READ;
@@ -83,19 +79,12 @@ namespace IOExpander {
 
     };
 
+    // ---------------------------------------------------------------------------
+    // TinyPwm > v0.0.2
+    // ---------------------------------------------------------------------------
+
     inline TinyPwm::TinyPwm(uint8_t address, TwoWire *wire) : Base(address, wire)
     {
-    }
-
-    inline void TinyPwm::begin(uint8_t address, TwoWire *wire)
-    {
-        _wire = wire;
-        begin(address);
-    }
-
-    inline void TinyPwm::begin(uint8_t address)
-    {
-        _address = address;
     }
 
     inline int TinyPwm::analogRead(uint8_t pin)
@@ -104,11 +93,8 @@ namespace IOExpander {
         TinyPwmNS::Command command = {TinyPwmNS::Commands::ANALOG_READ};
         command.ANALOG_READ.pin = pin;
         _wire->write(command, sizeof(command.ANALOG_READ) + 1);
-        if (endTransmission(true) && requestFrom(2, true)) {
-            int16_t value;
-            if (_wire->readBytes(reinterpret_cast<uint8_t *>(&value), sizeof(value)) == sizeof(value)) {
-                return value;
-            }
+        if (endTransmission(false) && requestFrom(2, true)) {
+            return static_cast<int16_t>(readWordLE());
         }
         return 0;
     }
@@ -119,11 +105,8 @@ namespace IOExpander {
         TinyPwmNS::Command command = {TinyPwmNS::Commands::DIGITAL_READ};
         command.DIGITAL_READ.pin = pin;
         _wire->write(command, sizeof(command.DIGITAL_READ) + 1);
-        if (endTransmission(true) && requestFrom(1, true)) {
-            uint8_t value;
-            if (_wire->readBytes(reinterpret_cast<uint8_t *>(&value), sizeof(value)) == sizeof(value)) {
-                return value;
-            }
+        if (endTransmission(false) && requestFrom(1, true)) {
+            return readByte();
         }
         return 0;
     }
@@ -133,7 +116,7 @@ namespace IOExpander {
         beginTransmission();
         TinyPwmNS::Command command = {TinyPwmNS::Commands::ANALOG_WRITE};
         command.ANALOG_WRITE.pin = pin;
-        command.ANALOG_WRITE.pwmValue = value;
+        command.ANALOG_WRITE.pwmValue = std::clamp<uint8_t>(value, 0, 255);
         write(command, sizeof(command.ANALOG_WRITE) + 1);
         endTransmission(true);
     }
@@ -152,7 +135,7 @@ namespace IOExpander {
         if (mode != INTERNAL_1V1 && mode != INTERNAL_2V56) {
             return;
         }
-        _wire->beginTransmission(_address);
+        beginTransmission();
         TinyPwmNS::Command command = {TinyPwmNS::Commands::ADC_SET_AREF};
         command.ADC_SET_AREF.mode = mode & ~0x80;
         write(command, sizeof(command.ADC_SET_AREF) + 1);
@@ -164,7 +147,7 @@ namespace IOExpander {
         beginTransmission();
         TinyPwmNS::Command command = {TinyPwmNS::Commands::DIGITAL_WRITE};
         command.DIGITAL_WRITE.pin = pin;
-        command.DIGITAL_WRITE.value = value;
+        command.DIGITAL_WRITE.value = value ? 1 : 0;
         write(command, sizeof(command.DIGITAL_WRITE) + 1);
         endTransmission(true);
     }
@@ -179,16 +162,26 @@ namespace IOExpander {
         endTransmission(true);
     }
 
+    // ---------------------------------------------------------------------------
+    // TinyPwm_V_0_0_2
+    // ---------------------------------------------------------------------------
 
     inline void TinyPwm_V_0_0_2::analogWrite(uint8_t pin, int value)
     {
         beginTransmission();
-        TinyPwmNS::Command command = {TinyPwmNS::Commands::ANALOG_WRITE_V0_0_2};
-        command.ANALOG_WRITE_V0_0_2.pwmValue = value;
-        write(command, sizeof(command.ANALOG_WRITE_V0_0_2) + 1);
+        writeByte(0x10); // ANALOG_WRITE
+        writeByte(value);
         endTransmission(true);
     }
 
+    inline void TinyPwm_V_0_0_2::digitalWrite(uint8_t pin, uint8_t value)
+    {
+        analogWrite(pin, value ? 255 : 0);
+    }
+
+    inline uint8_t TinyPwm_V_0_0_2::digitalRead(uint8_t pin)
+    {
+        return analogRead(pin) ? 1 : 0;
+    }
 
 }
-

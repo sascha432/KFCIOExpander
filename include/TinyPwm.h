@@ -24,11 +24,8 @@ namespace IOExpander {
         using Base::endTransmission;
         using Base::requestFrom;
         using Base::writeByte;
-        using Base::writeWordLE;
-        using Base::writeWordBE;
         using Base::readByte;
         using Base::readWordLE;
-        using Base::readWordBE;
 
 
         // default pin translation
@@ -48,20 +45,6 @@ namespace IOExpander {
     public:
         TinyPwm(uint8_t address = kDefaultAddress, TwoWire *wire = &Wire);
 
-    	void begin(uint8_t address, TwoWire *wire);
-        void begin(uint8_t address);
-
-        // // pinMode must be ANALOG_INPUT
-        // int analogRead(uint8_t pinNo);
-
-        // // pinMode must be OUTPUT
-        // bool analogWrite(uint8_t pin, uint8_t value);
-
-        // // pinMode must be OUTPUT
-        // void digitalWrite(uint8_t pin, uint8_t value);
-
-        // uint8_t digitalRead(uint8_t pin);
-
         // INPUT, INPUT_PULLDOWN, OUTPUT or ANALOG_INPUT
         void pinMode(uint8_t pin, uint8_t mode);
 
@@ -76,17 +59,6 @@ namespace IOExpander {
 
         void digitalWrite(uint8_t pin, uint8_t value);
         uint8_t digitalRead(uint8_t pin);
-
-        uint8_t readPortA();
-        uint8_t readPortB();
-        uint8_t readPortAB();
-        void writePortA(uint8_t value);
-        void writePortB(uint8_t value);
-        void writePortAB(uint8_t value);
-        void writePort(uint8_t value);
-
-        // void analogReference(uint8_t mode) {}
-        // void analogWriteFreq(uint32_t freq) {}
 
         inline  __attribute__((__always_inline__))
         void enableInterrupts(uint16_t pinMask, const InterruptCallback &callback, uint8_t mode, TriggerMode triggerMode)
@@ -116,8 +88,9 @@ namespace IOExpander {
 
     class TinyPwm_V_0_0_2 : public TinyPwm {
     public:
-
         void analogWrite(uint8_t pin, int value);
+        void digitalWrite(uint8_t pin, uint8_t value);
+        uint8_t digitalRead(uint8_t pin);
     };
 
 }
