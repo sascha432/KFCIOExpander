@@ -101,7 +101,7 @@ namespace IOExpander {
     template<typename _DeviceBaseType, typename _BaseClass>
     inline void MCP230XX<_DeviceBaseType, _BaseClass>::begin(uint8_t address, TwoWire *wire)
     {
-        _wire = wire;
+        Base::_wire = wire;
         begin(address);
     }
 
@@ -109,7 +109,7 @@ namespace IOExpander {
     inline void MCP230XX<_DeviceBaseType, _BaseClass>::begin(uint8_t address)
     {
         // default values for all register except _IODIR are 0
-        _address = address;
+        Base::begin(address);
         // set all pins to input
         _IODIR = 0xffff;
         _write(IODIR, _IODIR);
@@ -123,6 +123,12 @@ namespace IOExpander {
         _write(GPINTEN, _GPINTEN);
         // set gpio values to 0
         _GPIO = 0;
+    }
+
+    template<typename _DeviceBaseType, typename _BaseClass>
+    inline void MCP230XX<_DeviceBaseType, _BaseClass>::begin()
+    {
+        begin(Base::_address);
     }
 
     template<typename _DeviceBaseType, typename _BaseClass>
@@ -163,7 +169,6 @@ namespace IOExpander {
     {
         _read8(GPIO, _GPIO, Port::A);
         return _GPIO.A;
-        // return _GPIO[Port::A];
     }
 
     template<typename _DeviceBaseType, typename _BaseClass>
@@ -171,7 +176,6 @@ namespace IOExpander {
     {
         _read8(GPIO, _GPIO, Port::B);
         return _GPIO.B;
-        // return _GPIO[Port::B];
     }
 
     template<typename _DeviceBaseType, typename _BaseClass>
@@ -185,7 +189,6 @@ namespace IOExpander {
     template<typename _DeviceBaseType, typename _BaseClass>
     inline void MCP230XX<_DeviceBaseType, _BaseClass>::writePortA(uint8_t value)
     {
-        // _GPIO[Port::A] |= (value & _IODIR[Port::A]);
         _GPIO.A |= (value & _IODIR.A);
         _write8(GPIO, _GPIO, Port::A);
     }
@@ -193,7 +196,6 @@ namespace IOExpander {
     template<typename _DeviceBaseType, typename _BaseClass>
     inline void MCP230XX<_DeviceBaseType, _BaseClass>::writePortB(uint8_t value)
     {
-        // _GPIO[Port::B] |= (value & _IODIR[Port::B]);
         _GPIO.B |= (value & _IODIR.B);
         _write8(GPIO, _GPIO, Port::B);
     }
@@ -201,7 +203,6 @@ namespace IOExpander {
     template<typename _DeviceBaseType, typename _BaseClass>
     inline void MCP230XX<_DeviceBaseType, _BaseClass>::writePortAB(uint16_t value)
     {
-        // _GPIO |= (value & _IODIR);
         _GPIO._value |= (value & _IODIR._value);
         _write(GPIO, _GPIO);
     }
@@ -209,7 +210,6 @@ namespace IOExpander {
     template<typename _DeviceBaseType, typename _BaseClass>
     inline void MCP230XX<_DeviceBaseType, _BaseClass>::pinMode(uint8_t pin, uint8_t mode)
     {
-        // __LDBG_printf("pinMode %u=%u", pin, mode);
         auto pam = _pin2PortAndMask(pin);
         if (mode == OUTPUT) {
             _IODIR[pam.port] &= ~pam.mask;
@@ -274,10 +274,6 @@ namespace IOExpander {
         _write(GPINTEN, _GPINTEN);
 
         if (_GPINTEN._value == 0) {
-            // _INTCON = 0;
-            // _DEFVAL = 0;
-            // _read(INTCAP, _INTCAP); // clear pending interrupts
-
             ets_intr_lock();
             _timer.detach();
             _callback = nullptr;
@@ -296,8 +292,7 @@ namespace IOExpander {
     {
         beginTransmission();
         writeByte(_portAddress(regAddr, Port::A));
-        writeWordLE(regValue._value);
-        // __LDBG_printf("write %s=A%s B%s", __regAddrName(_portAddress(regAddr, Port::A)), decbin(regValue[Port::A]).c_str(), decbin(regValue[Port::B]).c_str());
+        writeWord(regValue._value);
         endTransmission(true);
     }
 
@@ -306,11 +301,9 @@ namespace IOExpander {
     {
         beginTransmission();
         writeByte(_portAddress(regAddr, Port::A));
-        if (endTransmission(false) && requestFrom(2, true)) {
-            regValue.A = readByte();
-            regValue.B = readByte();
+        if (endTransmissionAndRequestFrom(2, true)) {
+            regValue._value = readWord();
         }
-        // __LDBG_printf("_read reg_addr=%s A=%02x B=%02x", __regAddrName(regAddr), regValue.A, regValue.B);
     }
 
     template<typename _DeviceBaseType, typename _BaseClass>
@@ -319,7 +312,6 @@ namespace IOExpander {
         beginTransmission();
         writeByte(_portAddress(regAddr, port));
         writeByte(regValue[port]);
-        // __LDBG_printf("write %s=%c%s", __regAddrName(_portAddress(regAddr, port)), port == Port::A ? 'A' : 'B', decbin(regValue[port]).c_str());
         endTransmission(true);
     }
 
@@ -328,10 +320,9 @@ namespace IOExpander {
     {
         beginTransmission();
         writeByte(_portAddress(regAddr, port));
-        if (endTransmission(false) && requestFrom(1, true)) {
+        if (endTransmissionAndRequestFrom(1, true)) {
             regValue[port] = readByte();
         }
-        // __LDBG_printf("_read8 reg_addr=%s %c=%s", __regAddrName(regAddr), port == Port::A ? 'A' : 'B', decbin(regValue[port]).c_str());
     }
 
 }

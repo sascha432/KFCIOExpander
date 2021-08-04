@@ -27,11 +27,14 @@ namespace IOExpander {
     inline void Base<_DeviceType, _DeviceClassType, _DeviceConfigType>::begin(uint8_t address)
     {
         _address = address;
+        begin();
     }
 
     template<typename _DeviceType, typename _DeviceClassType, typename _DeviceConfigType>
     inline void Base<_DeviceType, _DeviceClassType, _DeviceConfigType>::begin()
     {
+        _errors = 0;
+        _status = StatusType::NONE;
     }
 
     template<typename _DeviceType, typename _DeviceClassType, typename _DeviceConfigType>
@@ -41,7 +44,7 @@ namespace IOExpander {
             return false;
         }
         _wire->beginTransmission(_address);
-        return (_wire->endTransmission() == 0);
+        return _wire->endTransmission(true) == 0;
     }
 
     template<typename _DeviceType, typename _DeviceClassType, typename _DeviceConfigType>

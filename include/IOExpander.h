@@ -362,7 +362,7 @@ namespace IOExpander {
         static constexpr DeviceTypeEnum kDeviceType = DeviceType::kDeviceType;
 
     public:
-        Base(uint8_t address = 0, TwoWire *wire = &Wire) : _address(address), _startPin(0xff), _wire(wire) {}
+        Base(uint8_t address = 0, TwoWire *wire = &Wire) : _wire(wire), _address(address), _startPin(0xff), _status(StatusType::NONE), _errors(0) {}
 
         void begin(uint8_t address, TwoWire *wire);
         void begin(uint8_t address);
@@ -386,53 +386,98 @@ namespace IOExpander {
             return IOExpander::getDeviceName<DeviceType>();
         }
 
+        // ----------------------------------------------------------------
+        // Wire methods
+
+        static const uint8_t kMaxErrors = 10; // stop reporting errors after this number has been reached
+
         void beginTransmission() {
+            _status = StatusType::WRITE;
             _wire->beginTransmission(getAddress());
         }
 
         bool endTransmission(bool stop = true) {
             uint8_t error;
-            // __LDBG_printf("transmit stop=%u", stop);
             if ((error = _wire->endTransmission(stop)) == 0) {
+                if (_status != StatusType::WRITE) {
+                    _status = StatusType::ERROR;
+                    return false;
+                }
+                _status = StatusType::NONE;
                 return true;
             }
-            __DBG_printf("end_transmission error=%u stop=%u", error, stop);
+            _status = StatusType::ERROR;
+            if (_errors++ < kMaxErrors) {
+                __DBG_printf("end_transmission error=%u stop=%u", error, stop);
+            }
             return false;
         }
 
         bool requestFrom(uint8_t len, bool stop = true) {
-            // __LDBG_printf("request=%u stop=%u", len, stop);
             auto rLen = static_cast<uint8_t>(_wire->requestFrom(getAddress(), len, static_cast<uint8_t>(stop)));
             if (rLen == len) {
+                _status = StatusType::READ;
                 return true;
             }
-            __DBG_printf("request_from failed len=%u<>%u stop=%u", len, rLen, stop);
+            _status = StatusType::ERROR;
+            if (_errors++ < kMaxErrors) {
+                __DBG_printf("request_from failed len=%u<>%u stop=%u", len, rLen, stop);
+            }
             return false;
         }
 
-        void writeByte(uint8_t value) {
-            // __LDBG_printf("write8=%s(0x%02x)", decbin(value).c_str(), value);
-            _wire->write(value);
+        bool endTransmissionAndRequestFrom(uint8_t len, bool stop = true) {
+            return endTransmission(false) && requestFrom(len, stop);
         }
 
-        void write(const uint8_t *buf, size_t len) {
-            _wire->write(buf, len);
+        void writeByte(uint8_t value) {
+            if (_status != StatusType::WRITE) {
+                return;
+            }
+            if (_wire->write(value) != 1) {
+                _errors++;
+                _status = StatusType::ERROR;
+            }
+        }
+
+        void writeBytes(const uint8_t *buf, size_t len) {
+            if (_status != StatusType::WRITE) {
+                return;
+            }
+            if (_wire->write(buf, len) != len) {
+                _errors++;
+                _status = StatusType::ERROR;
+            }
+        }
+
+        void writeWord(uint16_t value) {
+            writeWordLE(value);
         }
 
         void writeWordLE(uint16_t value) {
-            // __LDBG_printf("write16LE=%s", decbin(value).c_str());
             writeByte(value & 0xff);
             writeByte(value >> 8);
         }
 
         void writeWordBE(uint16_t value) {
-            // __LDBG_printf("write16BE=%s", decbin(value).c_str());
             writeByte(value >> 8);
             writeByte(value & 0xff);
         }
 
         uint8_t readByte() {
-            return _wire->read();
+            if (_status != StatusType::READ) {
+                return -1;
+            }
+            auto res = _wire->read();
+            if (res == -1) {
+                _errors++;
+                _status = StatusType::ERROR;
+            }
+            return res;
+        }
+
+        uint16_t readWord() {
+            return readWordLE();
         }
 
         uint16_t readWordLE() {
@@ -445,6 +490,26 @@ namespace IOExpander {
             return (hi << 8) | _wire->read();
         }
 
+        size_t readBytes(uint8_t *buf, size_t len) {
+            if (_status != StatusType::READ) {
+                return 0;
+            }
+            auto res = _wire->readBytes(buf, len);
+            if (res != len) {
+                _errors++;
+                _status = StatusType::ERROR;
+            }
+            return res;
+        }
+
+        void resetErrors() {
+            _errors = 0;
+        }
+
+        uint32_t getErrorCount() const {
+            return _errors;
+        }
+
     protected:
         // fallback runtime configuration
         uint8_t _getPin(uint8_t pinNo) const {
@@ -452,9 +517,18 @@ namespace IOExpander {
         }
 
     protected:
+        enum class StatusType : uint8_t {
+            NONE,
+            WRITE,
+            READ,
+            ERROR
+        };
+
+        TwoWire *_wire;
         uint8_t _address;
         uint8_t _startPin;
-        TwoWire *_wire;
+        StatusType _status;
+        uint32_t _errors;
     };
 
     namespace Interrupts {

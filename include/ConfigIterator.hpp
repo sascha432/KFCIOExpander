@@ -115,6 +115,13 @@ namespace IOExpander {
     }
 
     template<typename _ConfigType>
+    inline  __attribute__((__always_inline__))
+    auto ConfigIterator<_ConfigType>::getDeviceByPin(uint8_t pin) -> decltype(&_device)
+    {
+        return DeviceConfigType::pinMatch(pin) ? &_device : _next.getDeviceByPin(pin);
+    }
+
+    template<typename _ConfigType>
     bool ConfigIterator<_ConfigType>::interruptsEnabled()
     {
         return _interruptsEnabledRecursive();
@@ -197,7 +204,7 @@ namespace IOExpander {
     template<typename _ConfigType>
     constexpr bool ConfigIterator<_ConfigType>::_pinMatch(uint8_t pin) const
     {
-        return pin >= DeviceConfigType::kBeginPin && pin < DeviceConfigType::kEndPin;
+        return DeviceConfigType::pinMatch(pin);
     }
 
     template<typename _ConfigType>

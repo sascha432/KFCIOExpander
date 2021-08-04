@@ -93,7 +93,7 @@ namespace IOExpander {
         TinyPwmNS::Command command = {TinyPwmNS::Commands::ANALOG_READ};
         command.ANALOG_READ.pin = pin;
         _wire->write(command, sizeof(command.ANALOG_READ) + 1);
-        if (endTransmission(false) && requestFrom(2, true)) {
+        if (endTransmissionAndRequestFrom(2, true)) {
             return static_cast<int16_t>(readWordLE());
         }
         return 0;
@@ -105,7 +105,7 @@ namespace IOExpander {
         TinyPwmNS::Command command = {TinyPwmNS::Commands::DIGITAL_READ};
         command.DIGITAL_READ.pin = pin;
         _wire->write(command, sizeof(command.DIGITAL_READ) + 1);
-        if (endTransmission(false) && requestFrom(1, true)) {
+        if (endTransmissionAndRequestFrom(1, true)) {
             return readByte();
         }
         return 0;
@@ -116,8 +116,8 @@ namespace IOExpander {
         beginTransmission();
         TinyPwmNS::Command command = {TinyPwmNS::Commands::ANALOG_WRITE};
         command.ANALOG_WRITE.pin = pin;
-        command.ANALOG_WRITE.pwmValue = std::clamp<uint8_t>(value, 0, 255);
-        write(command, sizeof(command.ANALOG_WRITE) + 1);
+        command.ANALOG_WRITE.pwmValue = std::min(255, std::max(0, value));
+        writeBytes(command, sizeof(command.ANALOG_WRITE) + 1);
         endTransmission(true);
     }
 
@@ -126,7 +126,7 @@ namespace IOExpander {
         beginTransmission();
         TinyPwmNS::Command command = {TinyPwmNS::Commands::SET_PWM_FREQUENCY};
         command.SET_PWM_FREQUENCY.frequency = frequency;
-        write(command, sizeof(command.SET_PWM_FREQUENCY) + 1);
+        writeBytes(command, sizeof(command.SET_PWM_FREQUENCY) + 1);
         endTransmission(true);
     }
 
@@ -138,7 +138,7 @@ namespace IOExpander {
         beginTransmission();
         TinyPwmNS::Command command = {TinyPwmNS::Commands::ADC_SET_AREF};
         command.ADC_SET_AREF.mode = mode & ~0x80;
-        write(command, sizeof(command.ADC_SET_AREF) + 1);
+        writeBytes(command, sizeof(command.ADC_SET_AREF) + 1);
         endTransmission(true);
     }
 
@@ -148,7 +148,7 @@ namespace IOExpander {
         TinyPwmNS::Command command = {TinyPwmNS::Commands::DIGITAL_WRITE};
         command.DIGITAL_WRITE.pin = pin;
         command.DIGITAL_WRITE.value = value ? 1 : 0;
-        write(command, sizeof(command.DIGITAL_WRITE) + 1);
+        writeBytes(command, sizeof(command.DIGITAL_WRITE) + 1);
         endTransmission(true);
     }
 
@@ -158,7 +158,7 @@ namespace IOExpander {
         TinyPwmNS::Command command = {TinyPwmNS::Commands::PIN_MODE};
         command.PIN_MODE.pin = pin;
         command.PIN_MODE.mode = mode;
-        write(command, sizeof(command.PIN_MODE) + 1);
+        writeBytes(command, sizeof(command.PIN_MODE) + 1);
         endTransmission(true);
     }
 

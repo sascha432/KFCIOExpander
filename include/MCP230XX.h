@@ -363,18 +363,15 @@ namespace IOExpander {
         using DeviceType = typename Base::DeviceType;
         using DeviceClassType = typename Base::DeviceClassType;
         using DataType = typename Base::DataType;
-        using Base::begin;
         using Base::kDefaultAddress;
         using Base::kDeviceType;
         using Base::beginTransmission;
         using Base::endTransmission;
-        using Base::requestFrom;
+        using Base::endTransmissionAndRequestFrom;
         using Base::writeByte;
-        using Base::writeWordLE;
-        using Base::writeWordBE;
+        using Base::writeWord;
         using Base::readByte;
-        using Base::readWordLE;
-        using Base::readWordBE;
+        using Base::readWord;
         using Base::IODIR;
         using Base::IPOL;
         using Base::GPINTEN;
@@ -385,8 +382,6 @@ namespace IOExpander {
         using Base::INTF;
         using Base::INTCAP;
         using Base::GPIO;
-        using Base::_address;
-        using Base::_wire;
         using Base::_pin2Port;
         using Base::_pin2PortAndMask;
         using Base::_portAddress;
@@ -446,6 +441,7 @@ namespace IOExpander {
 
     	void begin(uint8_t address, TwoWire *wire);
         void begin(uint8_t address);
+        void begin();
 
         int analogRead(uint8_t pinNo);
         void analogWrite(uint8_t pin, int value);

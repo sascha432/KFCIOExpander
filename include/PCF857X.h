@@ -97,11 +97,8 @@ namespace IOExpander {
         using DeviceType = typename BaseClass::DeviceType;
         using DataType = typename DeviceType::DataType;
         using DeviceClassType = typename BaseClass::DeviceClassType;
-        using BaseClass::begin;
         using BaseClass::kDefaultAddress;
         using BaseClass::kDeviceType;
-        using BaseClass::_address;
-        using BaseClass::_wire;
 
     public:
         using SelfType = PCF857X<_DeviceBaseType, _DerivedClass, _ConfigClass>;
@@ -142,6 +139,7 @@ namespace IOExpander {
 
         void begin(uint8_t address, TwoWire *wire);
         void begin(uint8_t address);
+        void begin();
 
         void pinMode(uint8_t pin, uint8_t mode);
         void digitalWrite(uint8_t pin, uint8_t value);

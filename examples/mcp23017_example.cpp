@@ -324,7 +324,7 @@ void loop()
     // mcp.digitalWrite(8, state);
 
     ets_intr_lock();
-    auto value = PortAB(mcp.readPort());
+    PortAB(mcp.readPort());
     ets_intr_unlock();
     // if (value.digits != oldValue.digits) {
     //     delayMicroseconds(500);

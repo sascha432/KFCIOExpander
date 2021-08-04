@@ -33,15 +33,10 @@ namespace IOExpander {
         template<typename _BaseClassType, typename _DataType>
         uint8_t PCF857X<_BaseClassType, _DataType>::PIN::_readValue(uint8_t)
         {
-            auto &wire = _parent->getWire();
-            if (wire.requestFrom(_parent->getAddress(), 0x01U) == 1) {
-                _value = wire.read();
+            if (_parent->requestFrom(1, true)) {
+                _value = _parent->readByte();
                 _parent->captureEvents(_value);
             }
-            else {
-                __DBG_printf("_readValue requestFrom()=1 available=%u", wire.available());
-            }
-            // __LDBG_printf("_readValue PIN=%s DDR=%s PORT=%s _value=%s", decbin(_parent->PIN._value).c_str(), decbin(_parent->DDR._value).c_str(), decbin(_parent->PORT._value).c_str(), decbin(_value).c_str());
             return _value;
         }
 
@@ -52,16 +47,10 @@ namespace IOExpander {
         template<typename _BaseClassType, typename _DataType>
         uint16_t PCF857X<_BaseClassType, _DataType>::PIN::_readValue(uint16_t)
         {
-            auto &wire = _parent->getWire();
-            if (wire.requestFrom(_parent->getAddress(), 0x02U) == 2) {
-                _value = wire.read();
-                _value |= (wire.read() << 8);
+            if (_parent->requestFrom(2, true)) {
+                _value = _parent->readWord();
                 _parent->captureEvents(_value);
             }
-            else {
-                __DBG_printf("_readValue requestFrom()=2 available=%u", wire.available());
-            }
-            __LDBG_printf("_readValue PIN=%04x DDR=%04x PORT=%04x _value=%04x", _parent->PIN._value, _parent->DDR._value, _parent->PORT._value, _value);
             return _value;
         }
 
@@ -86,15 +75,9 @@ namespace IOExpander {
             // set all ports in INPUT mode to high and add all values for OUTPUT ports
             DataType value = (~_parent->DDR._value) | (_value & _parent->DDR._value);
             // __LDBG_printf("write PIN=%s DDR=%s PORT=%s value=%s", decbin(_parent->PIN._value).c_str(), decbin(_parent->DDR._value).c_str(), decbin(_parent->PORT._value).c_str(), decbin(value).c_str());
-            auto &wire = _parent->getWire();
             _parent->beginTransmission();
-            // wire.beginTransmission(_parent->getAddress());
-            wire.write(value);
-            _parent->endTransmission();
-            // uint8_t error;
-            // if ((error = wire.endTransmission()) != 0) {
-            //     __DBG_printf("_updatePort write()=1 value=%02x error=%u", value, error);
-            // }
+            _parent->writeByte(value);
+            _parent->endTransmission(true);
         }
 
         // ------------------------------------------------------------------
@@ -107,16 +90,9 @@ namespace IOExpander {
             // set all ports in INPUT mode to high and add all values for OUTPUT ports
             DataType value = (~_parent->DDR._value) | (_value & _parent->DDR._value);
             // __LDBG_printf("write PIN=%04x DDR=%04x PORT=%04x value=%04x", _parent->PIN._value, _parent->DDR._value, _parent->PORT._value, value);
-            auto &wire = _parent->getWire();
             _parent->beginTransmission();
-            // wire.beginTransmission(_parent->getAddress());
-            wire.write(value & 0xff);
-            wire.write(value >> 8);
-            _parent->endTransmission();
-            // uint8_t error;
-            // if ((error = wire.endTransmission()) != 0) {
-            //     __Error_printf("_updatePort write()=2 value=%04x error=%u", value, error);
-            // }
+            _parent->writeWord(value);
+            _parent->endTransmission(true);
         }
 
         // ------------------------------------------------------------------
@@ -141,18 +117,24 @@ namespace IOExpander {
     template<typename _BaseClass, typename _IOWrapper, typename _ConfigClass>
     void PCF857X<_BaseClass, _IOWrapper, _ConfigClass>::begin(uint8_t address, TwoWire *wire)
     {
-        _wire = wire;
+        BaseClass::_wire = wire;
         begin(address);
     }
 
     template<typename _BaseClass, typename _IOWrapper, typename _ConfigClass>
     inline void PCF857X<_BaseClass, _IOWrapper, _ConfigClass>::begin(uint8_t address)
     {
-        _address = address;
+        BaseClass::begin(address);
         // set all ports to input
         DDR._value = ~0;
         // set all ports to high and send settings to device
         PORT = ~0;
+    }
+
+    template<typename _BaseClass, typename _IOWrapper, typename _ConfigClass>
+    inline void PCF857X<_BaseClass, _IOWrapper, _ConfigClass>::begin()
+    {
+        begin(BaseClass::_address);
     }
 
     template<typename _BaseClass, typename _IOWrapper, typename _ConfigClass>
