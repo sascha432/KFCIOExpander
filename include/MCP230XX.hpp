@@ -165,49 +165,6 @@ namespace IOExpander {
     }
 
     template<typename _DeviceBaseType, typename _BaseClass>
-    inline uint8_t MCP230XX<_DeviceBaseType, _BaseClass>::_readPortA()
-    {
-        _read8(GPIO, _GPIO, Port::A);
-        return _GPIO.A;
-    }
-
-    template<typename _DeviceBaseType, typename _BaseClass>
-    inline uint8_t MCP230XX<_DeviceBaseType, _BaseClass>::_readPortB()
-    {
-        _read8(GPIO, _GPIO, Port::B);
-        return _GPIO.B;
-    }
-
-    template<typename _DeviceBaseType, typename _BaseClass>
-    inline uint16_t MCP230XX<_DeviceBaseType, _BaseClass>::_readPortAB()
-    {
-        _read8(GPIO, _GPIO, Port::A);
-        _read8(GPIO, _GPIO, Port::B);
-        return _GPIO._value;
-    }
-
-    template<typename _DeviceBaseType, typename _BaseClass>
-    inline void MCP230XX<_DeviceBaseType, _BaseClass>::writePortA(uint8_t value)
-    {
-        _GPIO.A |= (value & _IODIR.A);
-        _write8(GPIO, _GPIO, Port::A);
-    }
-
-    template<typename _DeviceBaseType, typename _BaseClass>
-    inline void MCP230XX<_DeviceBaseType, _BaseClass>::writePortB(uint8_t value)
-    {
-        _GPIO.B |= (value & _IODIR.B);
-        _write8(GPIO, _GPIO, Port::B);
-    }
-
-    template<typename _DeviceBaseType, typename _BaseClass>
-    inline void MCP230XX<_DeviceBaseType, _BaseClass>::writePortAB(uint16_t value)
-    {
-        _GPIO._value |= (value & _IODIR._value);
-        _write(GPIO, _GPIO);
-    }
-
-    template<typename _DeviceBaseType, typename _BaseClass>
     inline void MCP230XX<_DeviceBaseType, _BaseClass>::pinMode(uint8_t pin, uint8_t mode)
     {
         auto pam = _pin2PortAndMask(pin);
@@ -297,13 +254,14 @@ namespace IOExpander {
     }
 
     template<typename _DeviceBaseType, typename _BaseClass>
-    inline void MCP230XX<_DeviceBaseType, _BaseClass>::_read(uint8_t regAddr, Register &regValue)
+    inline auto MCP230XX<_DeviceBaseType, _BaseClass>::_read(uint8_t regAddr, Register &regValue) -> DataType
     {
         beginTransmission();
         writeByte(_portAddress(regAddr, Port::A));
         if (endTransmissionAndRequestFrom(2, true)) {
             regValue._value = readWord();
         }
+        return regValue._value;
     }
 
     template<typename _DeviceBaseType, typename _BaseClass>
@@ -316,13 +274,14 @@ namespace IOExpander {
     }
 
     template<typename _DeviceBaseType, typename _BaseClass>
-    inline void MCP230XX<_DeviceBaseType, _BaseClass>::_read8(uint8_t regAddr, Register &regValue, Port port)
+    inline auto MCP230XX<_DeviceBaseType, _BaseClass>::_read8(uint8_t regAddr, Register &regValue, Port port) -> decltype(regValue[port])
     {
         beginTransmission();
         writeByte(_portAddress(regAddr, port));
         if (endTransmissionAndRequestFrom(1, true)) {
             regValue[port] = readByte();
         }
+        return regValue[port];
     }
 
 }

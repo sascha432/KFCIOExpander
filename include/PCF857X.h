@@ -5,7 +5,8 @@
 #pragma once
 
 #include "IOExpander.h"
-#include "Timer.h"
+#include "InterruptTimer.h"
+
 
 namespace IOExpander {
 
@@ -99,6 +100,8 @@ namespace IOExpander {
         using DeviceClassType = typename BaseClass::DeviceClassType;
         using BaseClass::kDefaultAddress;
         using BaseClass::kDeviceType;
+        using BaseClass::resetErrors;
+        using BaseClass::getErrorCount;
 
     public:
         using SelfType = PCF857X<_DeviceBaseType, _DerivedClass, _ConfigClass>;
@@ -148,13 +151,25 @@ namespace IOExpander {
         int analogRead(uint8_t pin);
         void analogWrite(uint8_t pin, int val);
 
-        DataType readPort();
-        uint8_t readPortA();
-        uint8_t readPortB();
+        DataType readPort() {
+            return PIN;
+        }
+        uint8_t readPortA() {
+            return PIN & 0xff;
+        }
+        uint8_t readPortB() {
+            return PIN >> 8;
+        }
 
-        void writePort(DataType value);
-        void writePortA(uint8_t value);
-        void writePortB(uint8_t value);
+        void writePort(DataType value) {
+            PORT = value;
+        }
+        void writePortA(uint8_t value) {
+            PORT = value | (PIN & 0xff00);
+        }
+        void writePortB(uint8_t value) {
+            PORT = (value << 8) | (PIN & 0xff);
+        }
 
         void analogReference(uint8_t mode) {}
         void analogWriteFreq(uint32_t freq) {}
@@ -183,8 +198,12 @@ namespace IOExpander {
                 _timer.setCallback([this]() {
                     return this->interruptHandler();
                 });
-                // less than 300µs misses captured pins sometimes
-                _timer.start(300);
+                #if IOEXPANDER_INTERRUPT_MICROS_TIMER
+                    // less than 300µs misses captured pins sometimes
+                    _timer.start(300);
+                #else
+                    _timer.start(1);
+                #endif
             }
         }
 

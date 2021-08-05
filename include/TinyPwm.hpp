@@ -92,7 +92,7 @@ namespace IOExpander {
         beginTransmission();
         TinyPwmNS::Command command = {TinyPwmNS::Commands::ANALOG_READ};
         command.ANALOG_READ.pin = pin;
-        _wire->write(command, sizeof(command.ANALOG_READ) + 1);
+        writeBytes(command, sizeof(command.ANALOG_READ) + 1);
         if (endTransmissionAndRequestFrom(2, true)) {
             return static_cast<int16_t>(readWordLE());
         }
@@ -104,11 +104,39 @@ namespace IOExpander {
         beginTransmission();
         TinyPwmNS::Command command = {TinyPwmNS::Commands::DIGITAL_READ};
         command.DIGITAL_READ.pin = pin;
-        _wire->write(command, sizeof(command.DIGITAL_READ) + 1);
+        writeBytes(command, sizeof(command.DIGITAL_READ) + 1);
         if (endTransmissionAndRequestFrom(1, true)) {
             return readByte();
         }
         return 0;
+    }
+
+    inline uint8_t TinyPwm::readPort()
+    {
+        __DBG_printf("readPort()");
+        beginTransmission();
+        TinyPwmNS::Command command = {TinyPwmNS::Commands::DIGITAL_READ};
+        command.DIGITAL_READ.pin = 0;
+        writeBytes(command, sizeof(command.DIGITAL_READ) + 1);
+        command.DIGITAL_READ.pin = 1;
+        writeBytes(command, sizeof(command.DIGITAL_READ) + 1);
+        if (endTransmissionAndRequestFrom(2, true)) {
+            return readWord();
+        }
+        return 0;
+    }
+
+    inline void TinyPwm::writePort(uint8_t value) {
+        __DBG_printf("writePort(%u)", value);
+        beginTransmission();
+        TinyPwmNS::Command command = {TinyPwmNS::Commands::DIGITAL_WRITE};
+        command.DIGITAL_WRITE.pin = 0;
+        command.DIGITAL_WRITE.value = value & 0x01 ? 1 : 0;
+        writeBytes(command, sizeof(command.DIGITAL_WRITE) + 1);
+        command.DIGITAL_WRITE.pin = 1;
+        command.DIGITAL_WRITE.value = value & 0x02 ? 1 : 0;
+        writeBytes(command, sizeof(command.DIGITAL_WRITE) + 1);
+        endTransmission(true);
     }
 
     inline void TinyPwm::analogWrite(uint8_t pin, int value)

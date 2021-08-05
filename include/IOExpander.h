@@ -14,56 +14,52 @@
 #include <PrintHtmlEntities.h>
 #endif
 
-#ifndef HAVE_IOEXPANDER
-#error HAVE_IOEXPANDER not set
-#endif
-
 #if HAVE_IOEXPANDER
 
 // enable debugging
 // to disable error messages set IOEXPANDER_DEFAULT_OUTPUT=nullptr
 #ifndef DEBUG_IOEXPANDER
-#define DEBUG_IOEXPANDER 1
+#    define DEBUG_IOEXPANDER 0
 #endif
 
 // stream for debugging output
 #ifndef IOEXPANDER_DEFAULT_OUTPUT
-#define IOEXPANDER_DEFAULT_OUTPUT Serial
+#    define IOEXPANDER_DEFAULT_OUTPUT Serial
 #endif
 
 // set to 1 to disable the globals variable IOExpander::config
 #ifndef IOEXPANDER_DEVICE_CONFIG_NO_GLOBALS
-#define IOEXPANDER_DEVICE_CONFIG_NO_GLOBALS 0
+#    define IOEXPANDER_DEVICE_CONFIG_NO_GLOBALS 0
 #endif
 
 #if IOEXPANDER_DEVICE_CONFIG_NO_GLOBALS == 1 && !defined(IOEXPANDER_OVERRIDE_ARDUINO_FUNCTIONS)
-#define IOEXPANDER_OVERRIDE_ARDUINO_FUNCTIONS 0
-#warning support for global functions like pinMode(), digitalWrite(), etc... has been disabled
+#    define IOEXPANDER_OVERRIDE_ARDUINO_FUNCTIONS 0
+#    warning support for global functions like pinMode(), digitalWrite(), etc... has been disabled
 #endif
 
 // override arduino pinMode(), digitalRead()/Write(), analogRead()/Write()...
 #ifndef IOEXPANDER_OVERRIDE_ARDUINO_FUNCTIONS
-#define IOEXPANDER_OVERRIDE_ARDUINO_FUNCTIONS 1
+#    define IOEXPANDER_OVERRIDE_ARDUINO_FUNCTIONS 1
 #endif
 
 // use microseconds instead of milliseconds for the timer that invokes the interrupt handler
 // if this option is enabled, system_timer_reinit() must be called in setup()
 #ifndef IOEXPANDER_INTERRUPT_MICROS_TIMER
-#define IOEXPANDER_INTERRUPT_MICROS_TIMER 0
+#    define IOEXPANDER_INTERRUPT_MICROS_TIMER 0
 #endif
 
 #if DEBUG_IOEXPANDER
-#include "debug_helper_enable.h"
+#    include "debug_helper_enable.h"
 #else
-#include "debug_helper_disable.h"
+#    include "debug_helper_disable.h"
 #endif
 
 #ifndef __CONSTEXPR17
-#   if __GNUC__ >= 10
-#       define __CONSTEXPR17 constexpr
-#   else
-#       define __CONSTEXPR17
-#   endif
+#    if __GNUC__ >= 10
+#        define __CONSTEXPR17 constexpr
+#    else
+#        define __CONSTEXPR17
+#    endif
 #endif
 
 #if __GNUC__ <= 5
@@ -140,6 +136,9 @@ namespace IOExpander {
         return getDeviceName(_DeviceType::kDeviceType);
     }
 
+    // --------------------------------------------------------------------
+    // template for device configuration
+
     template<DeviceTypeEnum _DeviceTypeEnum, uint8_t _DefaultAddress, uint8_t _NumPins, typename _DataType, bool _HasIsConnected, uint8_t _GPIOInterruptPinMode = 0, TriggerMode _IntTriggerMode = TriggerMode::NONE>
     struct DeviceTypeTemplate {
         using DeviceType = DeviceTypeTemplate<_DeviceTypeEnum, _DefaultAddress, _NumPins, _DataType, _HasIsConnected, _GPIOInterruptPinMode, _IntTriggerMode>;
@@ -178,6 +177,9 @@ namespace IOExpander {
         return 0b1100000 | ofs;
     }
 
+    // --------------------------------------------------------------------
+    // preconfigured device templates
+
     using DeviceTypePCF8574 = DeviceTypeTemplate<DeviceTypeEnum::PCF8574, PCF857XAddress(), 8, uint8_t, true, INPUT_PULLUP, TriggerMode::OPEN_DRAIN>;
     using DeviceTypePCF8575 = DeviceTypeTemplate<DeviceTypeEnum::PCF8575, PCF857XAddress(), 16, uint16_t, true, INPUT_PULLUP, TriggerMode::OPEN_DRAIN>;
     using DeviceTypeTinyPwm = DeviceTypeTemplate<DeviceTypeEnum::TINYPWM, TinyPwmAddress(), 2, uint8_t, true>;
@@ -191,6 +193,7 @@ namespace IOExpander {
         using DeviceConfigType = void;
         using DeviceType = void;
         using DeviceClassType = void;
+        using DataType = uint8_t;
         static constexpr DeviceTypeEnum kDeviceType = DeviceTypeEnum::END;
         static constexpr uint8_t kNumPins = 0;
         static constexpr uint8_t kDefaultAddress = 0;
@@ -201,10 +204,14 @@ namespace IOExpander {
     template<typename _ConfigType>
     struct ConfigIterator;
 
+    // --------------------------------------------------------------------
+    // config iterator that is appended to terminate the recursion
+
     struct ConfigEndIterator {
         void _beginRecursive(TwoWire &wire);
         void _printStatusRecursive(Print &output);
         void _printStatusHtmlRecursive(Print &output);
+        void _dumpPinsRecursive(Print &output);
         constexpr size_t _sizeRecursive() const;
         void _pinModeRecursive(uint8_t pin, uint8_t mode);
         void _digitalWriteRecursive(uint8_t pin, uint8_t val);
@@ -213,16 +220,22 @@ namespace IOExpander {
         void _analogWriteRecursive(uint8_t pin, int val);
         int _analogReadRecursive(uint8_t pin);
         void _analogWriteFreqRecursive(uint32_t freq);
-        void *_getDevicePointerRecursive(uint8_t pin);
-        nullptr_t getDeviceByAddress(uint8_t address);
-        nullptr_t getDeviceByType(DeviceTypeEnum type);
-        nullptr_t getDeviceByPin(uint8_t pin);
+        constexpr void *_getDevicePointerRecursive(uint8_t pin) const;
+        constexpr auto getDeviceByAddress(uint8_t address) -> nullptr_t const;
+        constexpr auto getDeviceByType(DeviceTypeEnum type) -> nullptr_t const;
+        constexpr auto getDeviceByPin(uint8_t pin) -> nullptr_t const;
+        constexpr uint8_t _getDeviceIndexRecursive(uint8_t pin, uint8_t index) const;
         constexpr bool _pinMatch(uint8_t pin) const;
-        bool interruptsEnabled();
+        constexpr auto _getPinMaskRecursive(uint8_t pin) -> uint8_t const;
+        auto _readPortARecursive(uint8_t pin) -> uint8_t;
+        auto _readPortBRecursive(uint8_t pin) -> uint8_t;
+        auto _readPortRecursive(uint8_t pin) -> uint8_t;
+        void _writePortARecursive(uint8_t pin, uint8_t);
+        void _writePortBRecursive(uint8_t pin, uint8_t);
+        void _writePortRecursive(uint8_t pin, uint8_t);
         void _attachInterruptRecursive(void *device, uint8_t gpioPin, uint16_t pinMask, const InterruptCallback &callback, uint8_t mode, TriggerMode triggerMode);
         void _detachInterruptRecursive(void *device, uint8_t gpioPin, uint16_t pinMask);
-        void _setInterruptFlagRecursive(void *device);
-        void _dumpPinsRecursive(Print &output);
+        void _interruptHandlerRecursive(void *device);
     };
 
     template<typename _DeviceConfigType, typename _NextConfigType = DeviceTypeEnd>
@@ -242,6 +255,10 @@ namespace IOExpander {
         using NextConfigIterator = typename std::conditional<kHasNext, ConfigIterator<NextConfigType>, ConfigEndIterator>::type;
     };
 
+    // --------------------------------------------------------------------
+    // configuration iterator to provide access to all devices via single
+    // function call and no loops. recursive functions are all inline
+    // to avoid the overhead of function calls
 
     template<typename _ConfigType>
     struct ConfigIterator {
@@ -250,12 +267,16 @@ namespace IOExpander {
         using DeviceConfigType = typename ConfigType::DeviceConfigType;
         using DeviceType = typename ConfigType::DeviceType;
         using NextConfigIterator = typename ConfigType::NextConfigIterator;
+        using DataType = typename DeviceType::DataType;
 
         DeviceClassType _device;
         NextConfigIterator _next;
 
         void begin(TwoWire &wire);
         void begin();
+
+        // ----------------------------------------------------------------
+        // status and debugging
 
         // print status information about all devices
         template<bool _HtmlOutput = false>
@@ -264,7 +285,39 @@ namespace IOExpander {
         // print pin state of all devices
         void dumpPins(Print &output);
 
+        // ----------------------------------------------------------------
+        // methods to manage devices
+
         constexpr size_t size() const;
+
+        // return device pointer for given pin
+        void *getDevicePointer(uint8_t pin);
+        auto getDeviceByAddress(uint8_t address) -> decltype(&_device);
+        auto getDeviceByType(DeviceTypeEnum type) -> decltype(&_device);
+        auto getDeviceByPin(uint8_t pin) -> decltype(&_device);
+
+        // for readPort()
+        // uint16_t ports[config.size()]; can store all ports
+        constexpr uint8_t getDeviceIndex(uint8_t pin) const;
+        constexpr auto getPinMask(uint8_t pin) -> DataType const;
+
+        // ----------------------------------------------------------------
+        // methods to access ports directly
+        // read/writePortA access to port 0/A (access to pin 0-7)
+        // read/writePortB access to port 1/B (access to pin 8-15 if the device has more than 8 pins)
+        // read/writePort combined access to both ports (access to pin 0-15)
+
+        auto readPort(uint8_t pin) -> DataType;
+        auto readPortA(uint8_t pin) -> DataType;
+        auto readPortB(uint8_t pin) -> DataType;
+
+        void writePort(uint8_t pin, DataType value);
+        void writePortA(uint8_t pin, DataType value);
+        void writePortB(uint8_t pin, DataType value);
+
+        // ----------------------------------------------------------------
+        // arduino compatible methods
+
         void pinMode(uint8_t pin, uint8_t mode);
         void IRAM_ATTR digitalWrite(uint8_t pin, uint8_t val);
         int IRAM_ATTR digitalRead(uint8_t pin);
@@ -273,12 +326,8 @@ namespace IOExpander {
         void analogWrite(uint8_t pin, int val);
         void analogWriteFreq(uint32_t freq);
 
-        // return device pointer for given pin
-        void *getDevicePointer(uint8_t pin);
-
-        auto getDeviceByAddress(uint8_t address) -> decltype(&_device);
-        auto getDeviceByType(DeviceTypeEnum type) -> decltype(&_device);
-        auto getDeviceByPin(uint8_t pin) -> decltype(&_device);
+        // ----------------------------------------------------------------
+        // methods for interrupts
 
         // return true if any device has interrupts enabled
         bool interruptsEnabled();
@@ -298,7 +347,9 @@ namespace IOExpander {
         // if all pins are disabled, the callback handler is removed as well
         void detachInterrupt(uint8_t gpioPin, void *device, uint16_t pinMask = ~0);
 
-        // recursive methods
+        // ----------------------------------------------------------------
+        // internal recursive methods
+
         void _beginRecursive(TwoWire &wire);
         void _dumpPinsRecursive(Print &output);
         void _printStatusRecursive(Print &output);
@@ -313,14 +364,51 @@ namespace IOExpander {
         void _analogWriteRecursive(uint8_t pin, int val);
         void _analogWriteFreqRecursive(uint32_t freq);
         void *_getDevicePointerRecursive(uint8_t pin);
+
+        constexpr uint8_t _getDeviceIndexRecursive(uint8_t pin, uint8_t index) const {
+            return DeviceConfigType::pinMatch(pin) ? index : _next._getDeviceRecursive(pin, index + 1);
+        }
+
+        constexpr auto _getPinMaskRecursive(uint8_t pin) -> DataType const {
+            return DeviceConfigType::pinMatch(pin) ? _BV(pin - DeviceConfigType::kBeginPin) : _next._getPinMaskRecursive(pin);
+        }
+
+        auto _readPortRecursive(uint8_t pin) -> DataType {
+            return (DeviceConfigType::pinMatch(pin)) ? _device.readPort() : _next._readPortRecursive(pin);
+        }
+
+        auto _readPortARecursive(uint8_t pin) -> DataType {
+            return (DeviceConfigType::pinMatch(pin)) ? _device.readPortA() : _next._readPortARecursive(pin);
+        }
+
+        auto _readPortBRecursive(uint8_t pin) -> DataType {
+            return (DeviceConfigType::pinMatch(pin)) ? _device.readPortB() : _next._readPortBRecursive(pin);
+        }
+
+        void _writePortRecursive(uint8_t pin, DataType value) {
+            return (DeviceConfigType::pinMatch(pin)) ? _device.writePort(value) : _next._writePortRecursive(pin, value);
+        }
+
+        void _writePortARecursive(uint8_t pin, DataType value) {
+            return (DeviceConfigType::pinMatch(pin)) ? _device.writePortA(value) : _next._writePortARecursive(pin, value);
+        }
+
+        void _writePortBRecursive(uint8_t pin, DataType value) {
+            return (DeviceConfigType::pinMatch(pin)) ? _device.writePortB(value) : _next._writePortBRecursive(pin, value);
+        }
+
         bool _interruptsEnabledRecursive();
         void _attachInterruptRecursive(void *device, uint8_t gpioPin, uint16_t pinMask, const InterruptCallback &callback, uint8_t mode, TriggerMode triggerMode);
         void _detachInterruptRecursive(void *device, uint8_t gpioPin, uint16_t pinMask);
-        void _setInterruptFlagRecursive(void *device);
+
+        void _interruptHandlerRecursive(void *device);
 
     protected:
         constexpr int _triggerMode2IntMode(TriggerMode mode) const;
     };
+
+    // --------------------------------------------------------------------
+    // configuration class for each device
 
     template<typename _DeviceClassType, typename _DeviceType, uint8_t _Address, uint8_t _BeginPin, uint8_t _EndPin = 0>
     struct DeviceConfig {
@@ -335,20 +423,13 @@ namespace IOExpander {
 
         static_assert(_BeginPin >= kMinimumPinNumber, "_BeginPin must be greater or equal kMinimumPinNumber");
 
-        #if DEBUG_IOEXPANDER && 0
-            static bool pinMatch(uint8_t pin) {
-                if (pin >= kBeginPin && pin < kEndPin) {
-                    __LDBG_printf("pinMatch %s: %u >= %u < %u", getDeviceName<kDeviceType>(), kBeginPin, pin, kEndPin);
-                    return true;
-                }
-                return false;
-            }
-        #else
-            static constexpr bool pinMatch(uint8_t pin) {
-                return pin >= kBeginPin && pin < kEndPin;
-            }
-        #endif
+        static constexpr bool pinMatch(uint8_t pin) {
+            return pin >= kBeginPin && pin < kEndPin;
+        }
     };
+
+    // --------------------------------------------------------------------
+    // base class for devices
 
     template<typename _DeviceType, typename _DeviceClassType, typename _DeviceConfigType>
     class Base {
@@ -409,6 +490,9 @@ namespace IOExpander {
             _status = StatusType::ERROR;
             if (_errors++ < kMaxErrors) {
                 __DBG_printf("end_transmission error=%u stop=%u", error, stop);
+                if (_errors == kMaxErrors) {
+                    __DBG_printf("max. errors reached (%u), further errors won't be displayed", _errors);
+                }
             }
             return false;
         }
@@ -422,6 +506,9 @@ namespace IOExpander {
             _status = StatusType::ERROR;
             if (_errors++ < kMaxErrors) {
                 __DBG_printf("request_from failed len=%u<>%u stop=%u", len, rLen, stop);
+                if (_errors == kMaxErrors) {
+                    __DBG_printf("max. errors reached (%u), further errors won't be displayed", _errors);
+                }
             }
             return false;
         }
@@ -546,6 +633,10 @@ namespace IOExpander {
             return mode == RISING ? InterruptModeEnum::MODE_RISING : mode == FALLING ? InterruptModeEnum::MODE_FALLING : mode == CHANGE ? InterruptModeEnum::MODE_CHANGE : InterruptModeEnum::NONE;
         }
 
+        // --------------------------------------------------------------------
+        // class to manage interrupt pin states and capture state
+        // if the device does not have internal registers for it
+
         template<typename _DataType>
         struct InterruptMode {
 
@@ -662,6 +753,16 @@ namespace IOExpander {
         };
 
     }
+
+    // --------------------------------------------------------------------
+    // provides access to control bits, pin and port via variable
+    // any read or write access will directly access the device
+    //
+    // for example
+    //
+    // DDR control bits pin mode OUTPUT, INPUT
+    // PIN read pins
+    // PORT set pin state in OUTPUT mode or enable pullup resistor in input mode
 
     class PCF8574;
     class PCF8575;

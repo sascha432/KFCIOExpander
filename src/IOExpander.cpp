@@ -74,7 +74,7 @@ namespace IOExpander {
 
     void IRAM_ATTR __interruptHandler(void *arg)
     {
-        config._setInterruptFlagRecursive(arg);
+        config._interruptHandlerRecursive(arg);
     }
 
 }
@@ -86,8 +86,8 @@ namespace IOExpander {
     #endif
 
     #if defined(ESP8266)
-    #include <core_esp8266_version.h>
-    #include <core_esp8266_waveform.h>
+    #   include <core_esp8266_version.h>
+    #   include <core_esp8266_waveform.h>
     #endif
 
 extern "C" {
@@ -100,7 +100,7 @@ extern "C" {
     void __analogWrite(uint8_t pin, int val);
     int __analogRead(uint8_t pin);
 
-    void pinMode(uint8_t pin, uint8_t mode)
+    void IRAM_ATTR pinMode(uint8_t pin, uint8_t mode)
     {
         if (pin < IOExpander::kDigitalPinCount) {
             __pinMode(pin, mode);

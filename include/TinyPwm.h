@@ -20,13 +20,8 @@ namespace IOExpander {
         using Base::begin;
         using Base::kDefaultAddress;
         using Base::kDeviceType;
-        using Base::beginTransmission;
-        using Base::endTransmission;
-        using Base::requestFrom;
-        using Base::writeByte;
-        using Base::readByte;
-        using Base::readWordLE;
-
+        using Base::resetErrors;
+        using Base::getErrorCount;
 
         // default pin translation
         static constexpr uint8_t A0 = 0;
@@ -60,6 +55,26 @@ namespace IOExpander {
         void digitalWrite(uint8_t pin, uint8_t value);
         uint8_t digitalRead(uint8_t pin);
 
+        uint8_t readPortA() {
+            return readPort();
+        }
+
+        uint8_t readPortB() {
+            return 0; // does not exist
+        }
+
+        uint8_t readPort();
+
+        void writePortA(uint8_t value) {
+            writePort(value);
+        }
+
+        void writePortB(uint8_t value) {
+            // does not exist
+        }
+
+        void writePort(uint8_t value);
+
         inline  __attribute__((__always_inline__))
         void enableInterrupts(uint16_t pinMask, const InterruptCallback &callback, uint8_t mode, TriggerMode triggerMode)
         {
@@ -76,11 +91,6 @@ namespace IOExpander {
         }
 
         inline  __attribute__((__always_inline__))
-        bool interruptHandler() {
-            return false;
-        }
-
-        inline  __attribute__((__always_inline__))
         void ISRHandler() {
         }
 
@@ -91,6 +101,23 @@ namespace IOExpander {
         void analogWrite(uint8_t pin, int value);
         void digitalWrite(uint8_t pin, uint8_t value);
         uint8_t digitalRead(uint8_t pin);
+
+        uint8_t readPort() {
+            return (digitalRead(0) << 1) | digitalRead(1);
+        }
+
+        uint8_t readPortA() {
+            return readPort();
+        }
+
+        void writePort(uint8_t value) {
+            digitalWrite(0, value & 0x01);
+            digitalWrite(1, value & 0x02);
+        }
+
+        void writePortA(uint8_t value) {
+            writePort(value);
+        }
     };
 
 }

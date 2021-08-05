@@ -4,7 +4,7 @@
 
 #include <Arduino_compat.h>
 #include "IOExpander.h"
-#include "Timer.h"
+#include "InterruptTimer.h"
 
 // reads a 2x4 digits seven segment display with a MCP23017
 
@@ -275,6 +275,18 @@ void setup()
     for(uint8_t i = 8; i < 16; i++) {
         mcp.pinMode(i, INPUT);
     }
+
+    for(uint8_t i = 0; i < 16; i++) {
+        Serial.println(decbin(IOExpander::config.getPinMask(0x90 + i)));
+    }
+
+    // IOExpander::config.readPort(0x90);
+    // IOExpander::config.readPortA(0x90);
+    // IOExpander::config.readPortB(0x90);
+
+    // IOExpander::config.writePort(0x90, 0b11);
+    // IOExpander::config.writePortA(0x90, 0b1);
+    // IOExpander::config.writePortB(0x90, 0b1);
 
     IOExpander::config.attachInterrupt(14, &mcp, 0xff, handleIntPortA, CHANGE);
 

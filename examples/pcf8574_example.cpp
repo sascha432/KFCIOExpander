@@ -4,7 +4,8 @@
 
 #include <Arduino_compat.h>
 #include "IOExpander.h"
-#include "Timer.h"
+#include "InterruptTimer.h"
+
 
 void handler(uint16_t pinState)
 {
@@ -47,6 +48,14 @@ void setup()
 
     IOExpander::config.printStatus<false>(Serial);
     // delay(1000);
+
+    IOExpander::config.readPort(0x80);
+    IOExpander::config.readPortA(0x80);
+    IOExpander::config.readPortB(0x80);
+
+    IOExpander::config.writePort(0x80, 0x12);
+    IOExpander::config.writePortA(0x80, 1);
+    IOExpander::config.writePortB(0x80, 2);
 }
 
 bool state = false;

@@ -133,6 +133,8 @@ device.pinMode(uint8_t pin, uint8_t mode);
 
 Interrupts are device based and require a dedicated GPIO pin to receive the interrupts.
 
+***currently work in progress***
+
 
 ```c++
 // high priority interrupt handler, not an ISR though

@@ -23,8 +23,8 @@ namespace IOExpander {
 
         struct PortAndMask16 {
             Port port;
-            uint8_t mask;
-            PortAndMask16(Port _port, uint8_t _mask) : port(_port), mask(_mask) {}
+            uint16_t mask;
+            PortAndMask16(Port _port, uint16_t _mask) : port(_port), mask(_mask) {}
         };
 
         struct Register16 {
@@ -35,6 +35,10 @@ namespace IOExpander {
                     uint8_t B;
                 };
             };
+
+            using DataType = uint16_t;
+            using DataAType = uint8_t;
+            using DataBType = uint8_t;
 
             // 16bit operations
 
@@ -50,7 +54,7 @@ namespace IOExpander {
             // }
 
             inline  __attribute__((__always_inline__))
-            operator uint16_t() const {
+            operator DataType() const {
                 return _value;
             }
 
@@ -137,11 +141,15 @@ namespace IOExpander {
         struct Register8 {
             uint8_t _value;
 
+            using DataType = uint8_t;
+            using DataAType = uint8_t;
+            using DataBType = uint8_t;
+
             Register8() : _value(0) {}
             Register8(uint8_t value) : _value(value) {}
 
             inline  __attribute__((__always_inline__))
-            operator uint8_t() const {
+            operator DataType() const {
                 return _value;
             }
 
@@ -372,6 +380,8 @@ namespace IOExpander {
         using Base::writeWord;
         using Base::readByte;
         using Base::readWord;
+        using Base::resetErrors;
+        using Base::getErrorCount;
         using Base::IODIR;
         using Base::IPOL;
         using Base::GPINTEN;
@@ -449,50 +459,43 @@ namespace IOExpander {
         void digitalWrite(uint8_t pin, uint8_t value);
         uint8_t digitalRead(uint8_t pin);
 
-        uint8_t _readPortA();
-        uint8_t _readPortB();
-        uint16_t _readPortAB();
-
-        uint8_t readPortA() {
-            return _readPortA();
+        auto readPortA() -> typename Register::DataAType {
+            return _read8(GPIO, _GPIO, Port::A);
         }
 
-        uint8_t readPortB() {
-            return _readPortB();
+        auto readPortB() -> typename Register::DataBType {
+            return _read8(GPIO, _GPIO, Port::B);
         }
 
-        uint16_t readPort() {
-            return _readPortAB();
+        auto readPort() -> DataType {
+            return _read(GPIO, _GPIO);
         }
 
-        uint16_t readPortAB() {
-            return _readPortAB();
+        auto readIntCapA() -> typename Register::DataAType {
+            return _read8(INTCAP, _INTCAP, Port::A);
         }
 
-        uint8_t readIntCapA() {
-            return Register(readIntCapAB()).A;
+        auto readIntCapB() -> typename Register::DataBType {
+            return _read8(INTCAP, _INTCAP, Port::B);
         }
 
-        uint8_t readIntCapB() {
-            return Register(readIntCapAB()).B;
+        auto readIntCap() -> DataType {
+            return _read(INTCAP, _INTCAP);
         }
 
-        uint16_t readIntCap() {
-            return readIntCapAB();
+        void writePortA(typename Register::DataAType value) {
+            _GPIO.A |= (value & _IODIR.A);
+            _write8(GPIO, _GPIO, Port::A);
         }
 
-        uint16_t readIntCapAB() {
-            _read(INTCAP, _INTCAP);
-            return _INTCAP._value;
+        void writePortB(typename Register::DataBType value) {
+            _GPIO.B |= (value & _IODIR.B);
+            _write8(GPIO, _GPIO, Port::B);
         }
 
-        void writePortA(uint8_t value);
-        void writePortB(uint8_t value);
-        void writePortAB(uint16_t value);
-
-        inline  __attribute__((__always_inline__))
-        void writePort(uint16_t value) {
-            writePortAB(value);
+        void writePort(DataType value) {
+            _GPIO._value |= (value & _IODIR._value);
+            _write(GPIO, _GPIO);
         }
 
         void pinMode(uint8_t pin, uint8_t mode);
@@ -555,11 +558,11 @@ namespace IOExpander {
         // write 16 bit register
         void _write(uint8_t regAddr, Register &regValue);
         // read 16 bit register
-        void _read(uint8_t regAddr, Register &regValue);
+        auto _read(uint8_t regAddr, Register &regValue) -> DataType;
         // write 8bit part of a 16 bit register
         void _write8(uint8_t regAddr, Register regValue, Port port);
         // read 8bit part of a 16 bit register
-        void _read8(uint8_t regAddr, Register &regValue, Port port);
+        auto _read8(uint8_t regAddr, Register &regValue, Port port) -> decltype(regValue[port]);
 
     public:
         InterruptCallback _callback;
@@ -581,6 +584,12 @@ namespace IOExpander {
 
     class MCP23008 : public MCP230XX<DeviceTypeMCP23008, MCP23008Base<DeviceTypeMCP23008, MCP23008, NullConfig>> {
     public:
+        auto readPortB() -> typename Register::DataBType {
+            return 0;
+        }
+
+        void writePortB(typename Register::DataBType value) {
+        }
     };
 
     class MCP23017 : public MCP230XX<DeviceTypeMCP23017, MCP23017Base<DeviceTypeMCP23017, MCP23017, NullConfig>> {

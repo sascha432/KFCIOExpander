@@ -5,7 +5,8 @@
 #pragma once
 
 #include "IOExpander.h"
-#include "Timer.h"
+#include "InterruptTimer.h"
+
 
 #if DEBUG_IOEXPANDER
 #include "debug_helper_enable.h"
@@ -16,20 +17,20 @@
 namespace IOExpander {
 
     template<typename _ConfigType>
-    void ConfigIterator<_ConfigType>::begin(TwoWire &wire)
+    inline void ConfigIterator<_ConfigType>::begin(TwoWire &wire)
     {
         _beginRecursive(wire);
     }
 
     template<typename _ConfigType>
-    void ConfigIterator<_ConfigType>::begin()
+    inline void ConfigIterator<_ConfigType>::begin()
     {
         _beginRecursive(Wire);
     }
 
     template<typename _ConfigType>
     template<bool _HtmlOutput>
-    void ConfigIterator<_ConfigType>::printStatus(Print &output)
+    inline void ConfigIterator<_ConfigType>::printStatus(Print &output)
     {
         if __CONSTEXPR17 (_HtmlOutput) {
             _printStatusHtmlRecursive(output);
@@ -40,7 +41,7 @@ namespace IOExpander {
     }
 
     template<typename _ConfigType>
-    void ConfigIterator<_ConfigType>::dumpPins(Print &output)
+    inline void ConfigIterator<_ConfigType>::dumpPins(Print &output)
     {
         _dumpPinsRecursive(output);
     }
@@ -52,7 +53,7 @@ namespace IOExpander {
     }
 
     template<typename _ConfigType>
-    void ConfigIterator<_ConfigType>::pinMode(uint8_t pin, uint8_t mode)
+    inline void ConfigIterator<_ConfigType>::pinMode(uint8_t pin, uint8_t mode)
     {
         _pinModeRecursive(pin, mode);
     }
@@ -70,72 +71,122 @@ namespace IOExpander {
     }
 
     template<typename _ConfigType>
-    int ConfigIterator<_ConfigType>::analogRead(uint8_t pin)
+    inline int ConfigIterator<_ConfigType>::analogRead(uint8_t pin)
     {
         return _analogReadRecursive(pin);
     }
 
     template<typename _ConfigType>
-    void ConfigIterator<_ConfigType>::analogReference(uint8_t mode)
+    inline void ConfigIterator<_ConfigType>::analogReference(uint8_t mode)
     {
         _analogReferenceRecursive(mode);
     }
 
     template<typename _ConfigType>
-    void ConfigIterator<_ConfigType>::analogWrite(uint8_t pin, int val)
+    inline void ConfigIterator<_ConfigType>::analogWrite(uint8_t pin, int val)
     {
         _analogWriteRecursive(pin, val);
     }
 
     template<typename _ConfigType>
-    void ConfigIterator<_ConfigType>::analogWriteFreq(uint32_t freq)
+    inline void ConfigIterator<_ConfigType>::analogWriteFreq(uint32_t freq)
     {
         _analogWriteFreqRecursive(freq);
     }
 
     template<typename _ConfigType>
-    inline  __attribute__((__always_inline__))
+    inline __attribute__((__always_inline__))
     void *ConfigIterator<_ConfigType>::getDevicePointer(uint8_t pin)
     {
         return _getDevicePointerRecursive(pin);
     }
 
     template<typename _ConfigType>
-    inline  __attribute__((__always_inline__))
+    inline __attribute__((__always_inline__))
+    constexpr uint8_t ConfigIterator<_ConfigType>::getDeviceIndex(uint8_t pin) const
+    {
+        return _getDeviceIndexRecursive(pin, 0);
+    }
+
+    template<typename _ConfigType>
+    inline __attribute__((__always_inline__))
+    constexpr auto ConfigIterator<_ConfigType>::getPinMask(uint8_t pin) -> DataType const
+    {
+        return _getPinMaskRecursive(pin);
+    }
+
+    template<typename _ConfigType>
+    inline __attribute__((__always_inline__))
     auto ConfigIterator<_ConfigType>::getDeviceByAddress(uint8_t address) -> decltype(&_device)
     {
         return (_device.getAddress() == address) ? &_device : _next.getDeviceByAddress(address);
     }
 
     template<typename _ConfigType>
-    inline  __attribute__((__always_inline__))
+    inline __attribute__((__always_inline__))
     auto ConfigIterator<_ConfigType>::getDeviceByType(DeviceTypeEnum type) -> decltype(&_device)
     {
         return (_device.kDeviceType == type) ? &_device : _next.getDeviceByType(type);
     }
 
     template<typename _ConfigType>
-    inline  __attribute__((__always_inline__))
+    inline __attribute__((__always_inline__))
     auto ConfigIterator<_ConfigType>::getDeviceByPin(uint8_t pin) -> decltype(&_device)
     {
         return DeviceConfigType::pinMatch(pin) ? &_device : _next.getDeviceByPin(pin);
     }
 
     template<typename _ConfigType>
-    bool ConfigIterator<_ConfigType>::interruptsEnabled()
+    inline auto ConfigIterator<_ConfigType>::readPort(uint8_t pin) -> DataType
+    {
+        return _readPortRecursive(pin);
+    }
+
+    template<typename _ConfigType>
+    inline auto ConfigIterator<_ConfigType>::readPortA(uint8_t pin) -> DataType
+    {
+        return _readPortARecursive(pin);
+    }
+
+    template<typename _ConfigType>
+    inline auto ConfigIterator<_ConfigType>::readPortB(uint8_t pin) -> DataType
+    {
+        return _readPortBRecursive(pin);
+    }
+
+    template<typename _ConfigType>
+    inline void ConfigIterator<_ConfigType>::writePort(uint8_t pin, DataType value)
+    {
+        _writePortRecursive(pin, value);
+    }
+
+    template<typename _ConfigType>
+    void ConfigIterator<_ConfigType>::writePortA(uint8_t pin, DataType value)
+    {
+        _writePortARecursive(pin, value);
+    }
+
+    template<typename _ConfigType>
+    inline void ConfigIterator<_ConfigType>::writePortB(uint8_t pin, DataType value)
+    {
+        _writePortBRecursive(pin, value);
+    }
+
+    template<typename _ConfigType>
+    inline bool ConfigIterator<_ConfigType>::interruptsEnabled()
     {
         return _interruptsEnabledRecursive();
     }
 
     template<typename _ConfigType>
-    void ConfigIterator<_ConfigType>::attachInterrupt(uint8_t gpioPin, void *device, uint16_t pinMask, const InterruptCallback &callback, uint8_t mode, TriggerMode triggerMode)
+    inline void ConfigIterator<_ConfigType>::attachInterrupt(uint8_t gpioPin, void *device, uint16_t pinMask, const InterruptCallback &callback, uint8_t mode, TriggerMode triggerMode)
     {
         // __LDBG_printf("attachInterrupt gpio=%u device=%p mode=%u trigger_mode=%u", gpioPin, device, mode, triggerMode);
         _attachInterruptRecursive(device, gpioPin, pinMask, callback, mode, triggerMode);
     }
 
     template<typename _ConfigType>
-    void ConfigIterator<_ConfigType>::detachInterrupt(uint8_t gpioPin, void *device, uint16_t pinMask)
+    inline void ConfigIterator<_ConfigType>::detachInterrupt(uint8_t gpioPin, void *device, uint16_t pinMask)
     {
         __LDBG_printf("detachInterrupt gpio=%u device=%p", gpioPin, device);
         _detachInterruptRecursive(device, gpioPin, pinMask);
@@ -165,12 +216,13 @@ namespace IOExpander {
     inline  __attribute__((__always_inline__))
     void ConfigIterator<_ConfigType>::_printStatusRecursive(Print &output)
     {
-        output.printf_P(PSTR("%s @ I2C address 0x%02x, pin %u-%u, interrupts %s"),
+        output.printf_P(PSTR("%s @ I2C address 0x%02x, pin %u-%u, interrupts %s, errors %u"),
             _device.getDeviceName(),
             _device.getAddress(),
             DeviceConfigType::kBeginPin,
             DeviceConfigType::kEndPin - 1,
-            _device.interruptsEnabled() ? PSTR("enabled") : PSTR("disabled")
+            _device.interruptsEnabled() ? PSTR("enabled") : PSTR("disabled"),
+            _device.getErrorCount()
         );
         if __CONSTEXPR17 (DeviceType::kHasIsConnected) {
             if (!_device.isConnected()) {
@@ -185,7 +237,14 @@ namespace IOExpander {
     inline  __attribute__((__always_inline__))
     void ConfigIterator<_ConfigType>::_printStatusHtmlRecursive(Print &output)
     {
-        output.printf_P(PSTR(HTML_S(div) "%s @ I2C address 0x%02x"), _device.getDeviceName(), _device.getAddress());
+        output.printf_P(PSTR(HTML_S(div) "%s @ I2C address 0x%02x, pin %u-%u, interrupts %s, errors %u"),
+            _device.getDeviceName(),
+            _device.getAddress(),
+            DeviceConfigType::kBeginPin,
+            DeviceConfigType::kEndPin - 1,
+            _device.interruptsEnabled() ? PSTR("enabled") : PSTR("disabled"),
+            _device.getErrorCount()
+        );
         if __CONSTEXPR17 (DeviceType::kHasIsConnected) {
             if (!_device.isConnected()) {
                 output.print(F(HTML_S(br) "ERROR - Device not found!"));
@@ -196,12 +255,14 @@ namespace IOExpander {
     }
 
     template<typename _ConfigType>
+    inline  __attribute__((__always_inline__))
     constexpr size_t ConfigIterator<_ConfigType>::_sizeRecursive() const
     {
         return _next._sizeRecursive() + 1;
     }
 
     template<typename _ConfigType>
+    inline  __attribute__((__always_inline__))
     constexpr bool ConfigIterator<_ConfigType>::_pinMatch(uint8_t pin) const
     {
         return DeviceConfigType::pinMatch(pin);
@@ -212,6 +273,7 @@ namespace IOExpander {
     void ConfigIterator<_ConfigType>::_pinModeRecursive(uint8_t pin, uint8_t mode)
     {
         if (DeviceConfigType::pinMatch(pin)) {
+            // __LDBG_printf("device=%s pin=%u %mode=%u", _device.getDeviceName(), pin, mode);
             _device.pinMode(pin - DeviceConfigType::kBeginPin, mode);
             return;
         }
@@ -293,7 +355,7 @@ namespace IOExpander {
         if (_device.interruptsEnabled()) {
             return true;
         }
-        _next._interruptsEnabledRecursive();
+        return _next._interruptsEnabledRecursive();
     }
 
     template<typename _ConfigType>
@@ -336,18 +398,19 @@ namespace IOExpander {
 
     template<typename _ConfigType>
     inline  __attribute__((__always_inline__))
-    void ConfigIterator<_ConfigType>::_setInterruptFlagRecursive(void *device)
-    {
-        if (device == reinterpret_cast<void *>(&_device)) {
-            _device.ISRHandler();
-        }
-        _next._setInterruptFlagRecursive(device);
-    }
-
-    template<typename _ConfigType>
     constexpr int ConfigIterator<_ConfigType>::_triggerMode2IntMode(TriggerMode mode) const
     {
         return (mode == TriggerMode::DEVICE_DEFAULT) ? _triggerMode2IntMode(DeviceType::kIntTriggerMode) : (mode == TriggerMode::ACTIVE_HIGH) ? RISING : FALLING;
+    }
+
+    template<typename _ConfigType>
+    inline  __attribute__((__always_inline__))
+    void ConfigIterator<_ConfigType>::_interruptHandlerRecursive(void *devicePtr)
+    {
+        if (devicePtr == &_device) {
+            _device.ISRHandler();
+        }
+        _next._interruptHandlerRecursive(devicePtr);
     }
 
 }

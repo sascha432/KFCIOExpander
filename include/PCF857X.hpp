@@ -155,7 +155,6 @@ namespace IOExpander {
                 PORT &= ~_BV(pin);
                 break;
         }
-
     }
 
     template<typename _BaseClass, typename _IOWrapper, typename _ConfigClass>
@@ -185,18 +184,6 @@ namespace IOExpander {
     inline void PCF857X<_BaseClass, _IOWrapper, _ConfigClass>::analogWrite(uint8_t pin, int val)
     {
         digitalWrite(pin, val);
-    }
-
-    template<typename _BaseClass, typename _IOWrapper, typename _ConfigClass>
-    inline void PCF857X<_BaseClass, _IOWrapper, _ConfigClass>::writePort(DataType value)
-    {
-        PORT = value;
-    }
-
-    template<typename _BaseClass, typename _IOWrapper, typename _ConfigClass>
-    inline typename PCF857X<_BaseClass, _IOWrapper, _ConfigClass>::DataType PCF857X<_BaseClass, _IOWrapper, _ConfigClass>::readPort()
-    {
-        return static_cast<DataType>(PIN);
     }
 
     template<typename _BaseClass, typename _IOWrapper, typename _ConfigClass>

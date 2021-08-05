@@ -66,19 +66,19 @@ namespace IOExpander {
     }
 
     inline __attribute__((__always_inline__))
-    void *ConfigEndIterator::_getDevicePointerRecursive(uint8_t pin)
+    constexpr void *ConfigEndIterator::_getDevicePointerRecursive(uint8_t pin) const
     {
         return nullptr;
     }
 
     inline __attribute__((__always_inline__))
-    auto ConfigEndIterator::getDeviceByAddress(uint8_t address) -> decltype(nullptr)
+    constexpr auto ConfigEndIterator::getDeviceByAddress(uint8_t address) -> nullptr_t const
     {
         return nullptr;
     }
 
     inline __attribute__((__always_inline__))
-    auto ConfigEndIterator::getDeviceByPin(uint8_t pin) -> decltype(nullptr)
+    constexpr auto ConfigEndIterator::getDeviceByPin(uint8_t pin) -> nullptr_t const
     {
         return nullptr;
     }
@@ -90,9 +90,48 @@ namespace IOExpander {
     }
 
     inline __attribute__((__always_inline__))
-    bool ConfigEndIterator::interruptsEnabled()
+    constexpr uint8_t ConfigEndIterator::_getDeviceIndexRecursive(uint8_t pin, uint8_t index) const
     {
-        return false;
+        return 0xff;
+    }
+
+    inline __attribute__((__always_inline__))
+    constexpr auto ConfigEndIterator::_getPinMaskRecursive(uint8_t pin) -> uint8_t const
+    {
+        return 0;
+    }
+
+    inline __attribute__((__always_inline__))
+    auto ConfigEndIterator::_readPortARecursive(uint8_t pin) -> uint8_t
+    {
+        return 0;
+    }
+
+    inline __attribute__((__always_inline__))
+    auto ConfigEndIterator::_readPortBRecursive(uint8_t pin) -> uint8_t
+    {
+        return 0;
+    }
+
+    inline __attribute__((__always_inline__))
+    auto ConfigEndIterator::_readPortRecursive(uint8_t pin) -> uint8_t
+    {
+        return 0;
+    }
+
+    inline __attribute__((__always_inline__))
+    void ConfigEndIterator::_writePortARecursive(uint8_t pin, uint8_t)
+    {
+    }
+
+    inline __attribute__((__always_inline__))
+    void ConfigEndIterator::_writePortBRecursive(uint8_t pin, uint8_t)
+    {
+    }
+
+    inline __attribute__((__always_inline__))
+    void ConfigEndIterator::_writePortRecursive(uint8_t pin, uint8_t)
+    {
     }
 
     inline __attribute__((__always_inline__))
@@ -106,7 +145,7 @@ namespace IOExpander {
     }
 
     inline __attribute__((__always_inline__))
-    void ConfigEndIterator::_setInterruptFlagRecursive(void *device)
+    void ConfigEndIterator::_interruptHandlerRecursive(void *device)
     {
     }
 

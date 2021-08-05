@@ -43,9 +43,7 @@ namespace IOExpander {
         }
 
         void start(uint32_t interval) {
-            if (can_yield()) {
-                optimistic_yield(10000);
-            }
+            _locked = false;
             ets_timer_setfn(&_timer, reinterpret_cast<ETSTimerFunc *>(_etstimer_callback), this);
             #if IOEXPANDER_INTERRUPT_MICROS_TIMER
                 ets_timer_arm_new(&_timer, interval, true, false);
@@ -55,18 +53,24 @@ namespace IOExpander {
         }
 
         void run() {
+            ets_intr_lock();
+            if (_locked) {
+                ets_intr_unlock();
+                return;
+            }
+            _locked = true;
+            ets_intr_unlock();
             if (!_callback()) {
                 detach();
             }
-            else {
-                if (can_yield()) {
-                    yield();
-                }
-            }
+            ets_intr_lock();
+            _locked = false;
+            ets_intr_unlock();
         }
 
         ETSTimer _timer;
         Callback _callback;
+        volatile bool _locked;
     };
 
 }
