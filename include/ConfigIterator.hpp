@@ -263,16 +263,30 @@ namespace IOExpander {
 
     template<typename _ConfigType>
     inline  __attribute__((__always_inline__))
-    constexpr bool ConfigIterator<_ConfigType>::_pinMatch(uint8_t pin) const
+    constexpr bool ConfigIterator<_ConfigType>::pinMatchAny(uint8_t pin) const
     {
-        return DeviceConfigType::pinMatch(pin);
+        return DeviceConfigType::pinMatchAny(pin);
+    }
+
+    template<typename _ConfigType>
+    inline  __attribute__((__always_inline__))
+    constexpr bool ConfigIterator<_ConfigType>::pinMatchDigital(uint8_t pin) const
+    {
+        return DeviceConfigType::pinMatchDigital(pin);
+    }
+
+    template<typename _ConfigType>
+    inline  __attribute__((__always_inline__))
+    constexpr bool ConfigIterator<_ConfigType>::pinMatchAnalog(uint8_t pin) const
+    {
+        return DeviceConfigType::pinMatchAnalog(pin);
     }
 
     template<typename _ConfigType>
     inline  __attribute__((__always_inline__))
     void ConfigIterator<_ConfigType>::_pinModeRecursive(uint8_t pin, uint8_t mode)
     {
-        if (DeviceConfigType::pinMatch(pin)) {
+        if (DeviceConfigType::pinMatchDigital(pin)) {
             // __LDBG_printf("device=%s pin=%u %mode=%u", _device.getDeviceName(), pin, mode);
             _device.pinMode(pin - DeviceConfigType::kBeginPin, mode);
             return;
@@ -284,7 +298,7 @@ namespace IOExpander {
     inline  __attribute__((__always_inline__))
     void ConfigIterator<_ConfigType>::_digitalWriteRecursive(uint8_t pin, uint8_t val)
     {
-        if (DeviceConfigType::pinMatch(pin)) {
+        if (DeviceConfigType::pinMatchDigital(pin)) {
             _device.digitalWrite(pin - DeviceConfigType::kBeginPin, val);
             return;
         }
@@ -295,7 +309,7 @@ namespace IOExpander {
     inline  __attribute__((__always_inline__))
     int ConfigIterator<_ConfigType>::_digitalReadRecursive(uint8_t pin)
     {
-        if (DeviceConfigType::pinMatch(pin)) {
+        if (DeviceConfigType::pinMatchDigital(pin)) {
             return _device.digitalRead(pin - DeviceConfigType::kBeginPin);
         }
         return _next._digitalReadRecursive(pin);
@@ -305,7 +319,7 @@ namespace IOExpander {
     inline  __attribute__((__always_inline__))
     int ConfigIterator<_ConfigType>::_analogReadRecursive(uint8_t pin)
     {
-        if (DeviceConfigType::pinMatch(pin)) {
+        if (DeviceConfigType::pinMatchAnalog(pin)) {
             return _device.analogRead(pin - DeviceConfigType::kBeginPin);
         }
         return _next._analogReadRecursive(pin);
@@ -323,7 +337,7 @@ namespace IOExpander {
     inline  __attribute__((__always_inline__))
     void ConfigIterator<_ConfigType>::_analogWriteRecursive(uint8_t pin, int val)
     {
-        if (DeviceConfigType::pinMatch(pin)) {
+        if (DeviceConfigType::pinMatchAnalog(pin)) {
             _device.analogWrite(pin - DeviceConfigType::kBeginPin, val);
             return;
         }
@@ -342,7 +356,7 @@ namespace IOExpander {
     inline  __attribute__((__always_inline__))
     void *ConfigIterator<_ConfigType>::_getDevicePointerRecursive(uint8_t pin)
     {
-        if (DeviceConfigType::pinMatch(pin)) {
+        if (DeviceConfigType::pinMatchAny(pin)) {
             return reinterpret_cast<void *>(&_device);
         }
         _next._getDevicePointerRecursive(pin);

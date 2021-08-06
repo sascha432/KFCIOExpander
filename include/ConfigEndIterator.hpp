@@ -84,7 +84,19 @@ namespace IOExpander {
     }
 
     inline __attribute__((__always_inline__))
-    constexpr bool ConfigEndIterator::_pinMatch(uint8_t pin) const
+    constexpr bool ConfigEndIterator::pinMatchAny(uint8_t pin) const
+    {
+        return true;
+    }
+
+    inline __attribute__((__always_inline__))
+    constexpr bool ConfigEndIterator::pinMatchDigital(uint8_t pin) const
+    {
+        return true;
+    }
+
+    inline __attribute__((__always_inline__))
+    constexpr bool ConfigEndIterator::pinMatchAnalog(uint8_t pin) const
     {
         return true;
     }

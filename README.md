@@ -41,7 +41,7 @@ Adding an I/O expander can be done with the IOEXPANDER_DEVICE_CONFIG macro.
 //                                                                   I2C Address ^^^^  ^^^  Virtual start PIN
 ```
 
-`IOExpander::Config<IOExpander::DeviceConfig<DeviceClass, DeviceType, I2CAddress, First Pin [, (Last Pin + 1)]>[, IOExpander::Config<...>]>`
+`IOExpander::Config<IOExpander::DeviceConfig<DeviceClass, DeviceType, I2CAddress, First Pin>[, IOExpander::Config<...>]>`
 
 | DeviceClass | DeviceType | pinMode | digitalRead/Write | analogRead/Write | Interrupts |
 |---|---|---|---|---|---|

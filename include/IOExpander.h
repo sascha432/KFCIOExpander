@@ -139,15 +139,17 @@ namespace IOExpander {
     // --------------------------------------------------------------------
     // template for device configuration
 
-    template<DeviceTypeEnum _DeviceTypeEnum, uint8_t _DefaultAddress, uint8_t _NumPins, typename _DataType, bool _HasIsConnected, uint8_t _GPIOInterruptPinMode = 0, TriggerMode _IntTriggerMode = TriggerMode::NONE>
+    template<DeviceTypeEnum _DeviceTypeEnum, uint8_t _DefaultAddress, uint8_t _NumDigitalPins, uint8_t _NumAnalogPins, typename _DataType, bool _HasIsConnected, uint8_t _GPIOInterruptPinMode = 0, TriggerMode _IntTriggerMode = TriggerMode::NONE>
     struct DeviceTypeTemplate {
-        using DeviceType = DeviceTypeTemplate<_DeviceTypeEnum, _DefaultAddress, _NumPins, _DataType, _HasIsConnected, _GPIOInterruptPinMode, _IntTriggerMode>;
+        using DeviceType = DeviceTypeTemplate<_DeviceTypeEnum, _DefaultAddress, _NumDigitalPins, _NumAnalogPins, _DataType, _HasIsConnected, _GPIOInterruptPinMode, _IntTriggerMode>;
         using DataType = _DataType;
 
         // device type
         static constexpr DeviceTypeEnum kDeviceType = _DeviceTypeEnum;
         // number of pins available
-        static constexpr uint8_t kNumPins = _NumPins;
+        static constexpr uint8_t kNumDigitalPins = _NumDigitalPins;
+         // number of pins available
+        static constexpr uint8_t kNumAnalogPins = _NumAnalogPins;
         // default I2C address
         static constexpr uint8_t kDefaultAddress = _DefaultAddress;
         // has isConnected() method
@@ -180,12 +182,13 @@ namespace IOExpander {
     // --------------------------------------------------------------------
     // preconfigured device templates
 
-    using DeviceTypePCF8574 = DeviceTypeTemplate<DeviceTypeEnum::PCF8574, PCF857XAddress(), 8, uint8_t, true, INPUT_PULLUP, TriggerMode::OPEN_DRAIN>;
-    using DeviceTypePCF8575 = DeviceTypeTemplate<DeviceTypeEnum::PCF8575, PCF857XAddress(), 16, uint16_t, true, INPUT_PULLUP, TriggerMode::OPEN_DRAIN>;
-    using DeviceTypeTinyPwm = DeviceTypeTemplate<DeviceTypeEnum::TINYPWM, TinyPwmAddress(), 2, uint8_t, true>;
-    using DeviceTypeMCP23008 = DeviceTypeTemplate<DeviceTypeEnum::MCP23008, MCP230XXAddress(), 8, uint8_t, true, INPUT, TriggerMode::ACTIVE_HIGH>;
-    using DeviceTypeMCP23017 = DeviceTypeTemplate<DeviceTypeEnum::MCP23017, MCP230XXAddress(), 16, uint16_t, true, INPUT, TriggerMode::ACTIVE_HIGH>;
-    using DeviceTypePCA9685 = DeviceTypeTemplate<DeviceTypeEnum::PCA9685, PCA96X5Address(), 16, uint16_t, false>;
+    using DeviceTypePCF8574 = DeviceTypeTemplate<DeviceTypeEnum::PCF8574, PCF857XAddress(), 8, 0, uint8_t, true, INPUT_PULLUP, TriggerMode::OPEN_DRAIN>;
+    using DeviceTypePCF8575 = DeviceTypeTemplate<DeviceTypeEnum::PCF8575, PCF857XAddress(), 16, 0, uint16_t, true, INPUT_PULLUP, TriggerMode::OPEN_DRAIN>;
+    using DeviceTypeTinyPwm = DeviceTypeTemplate<DeviceTypeEnum::TINYPWM, TinyPwmAddress(), 3, 2, uint8_t, true>;
+    using DeviceTypeTinyPwm_v0_0_2 = DeviceTypeTemplate<DeviceTypeEnum::TINYPWM, TinyPwmAddress(), 1, 2, uint8_t, true>;
+    using DeviceTypeMCP23008 = DeviceTypeTemplate<DeviceTypeEnum::MCP23008, MCP230XXAddress(), 8, 0, uint8_t, true, INPUT, TriggerMode::ACTIVE_HIGH>;
+    using DeviceTypeMCP23017 = DeviceTypeTemplate<DeviceTypeEnum::MCP23017, MCP230XXAddress(), 16, 0, uint16_t, true, INPUT, TriggerMode::ACTIVE_HIGH>;
+    using DeviceTypePCA9685 = DeviceTypeTemplate<DeviceTypeEnum::PCA9685, PCA96X5Address(), 16, 0, uint16_t, false>;
 
     struct DeviceTypeEnd {
         using ConfigType = DeviceTypeEnd;
@@ -195,7 +198,8 @@ namespace IOExpander {
         using DeviceClassType = void;
         using DataType = uint8_t;
         static constexpr DeviceTypeEnum kDeviceType = DeviceTypeEnum::END;
-        static constexpr uint8_t kNumPins = 0;
+        static constexpr uint8_t kNumDigitalPins = 0;
+        static constexpr uint8_t kNumAnalogPins = 0;
         static constexpr uint8_t kDefaultAddress = 0;
         static constexpr bool kHasIsConnected = false;
         static constexpr bool kHasNext = false;
@@ -225,7 +229,9 @@ namespace IOExpander {
         constexpr auto getDeviceByType(DeviceTypeEnum type) -> nullptr_t const;
         constexpr auto getDeviceByPin(uint8_t pin) -> nullptr_t const;
         constexpr uint8_t _getDeviceIndexRecursive(uint8_t pin, uint8_t index) const;
-        constexpr bool _pinMatch(uint8_t pin) const;
+        constexpr bool pinMatchAny(uint8_t pin) const;
+        constexpr bool pinMatchDigital(uint8_t pin) const;
+        constexpr bool pinMatchAnalog(uint8_t pin) const;
         constexpr auto _getPinMaskRecursive(uint8_t pin) -> uint8_t const;
         auto _readPortARecursive(uint8_t pin) -> uint8_t;
         auto _readPortBRecursive(uint8_t pin) -> uint8_t;
@@ -355,7 +361,9 @@ namespace IOExpander {
         void _printStatusRecursive(Print &output);
         void _printStatusHtmlRecursive(Print &output);
         constexpr size_t _sizeRecursive() const;
-        constexpr bool _pinMatch(uint8_t pin) const;
+        constexpr bool pinMatchAny(uint8_t pin) const;
+        constexpr bool pinMatchDigital(uint8_t pin) const;
+        constexpr bool pinMatchAnalog(uint8_t pin) const;
         void _pinModeRecursive(uint8_t pin, uint8_t mode);
         void _digitalWriteRecursive(uint8_t pin, uint8_t val);
         int _digitalReadRecursive(uint8_t pin);
@@ -366,35 +374,35 @@ namespace IOExpander {
         void *_getDevicePointerRecursive(uint8_t pin);
 
         constexpr uint8_t _getDeviceIndexRecursive(uint8_t pin, uint8_t index) const {
-            return DeviceConfigType::pinMatch(pin) ? index : _next._getDeviceRecursive(pin, index + 1);
+            return DeviceConfigType::pinMatchAny(pin) ? index : _next._getDeviceRecursive(pin, index + 1);
         }
 
         constexpr auto _getPinMaskRecursive(uint8_t pin) -> DataType const {
-            return DeviceConfigType::pinMatch(pin) ? _BV(pin - DeviceConfigType::kBeginPin) : _next._getPinMaskRecursive(pin);
+            return DeviceConfigType::pinMatchDigital(pin) ? _BV(pin - DeviceConfigType::kBeginPin) : _next._getPinMaskRecursive(pin);
         }
 
         auto _readPortRecursive(uint8_t pin) -> DataType {
-            return (DeviceConfigType::pinMatch(pin)) ? _device.readPort() : _next._readPortRecursive(pin);
+            return (DeviceConfigType::pinMatchDigital(pin)) ? _device.readPort() : _next._readPortRecursive(pin);
         }
 
         auto _readPortARecursive(uint8_t pin) -> DataType {
-            return (DeviceConfigType::pinMatch(pin)) ? _device.readPortA() : _next._readPortARecursive(pin);
+            return (DeviceConfigType::pinMatchDigital(pin)) ? _device.readPortA() : _next._readPortARecursive(pin);
         }
 
         auto _readPortBRecursive(uint8_t pin) -> DataType {
-            return (DeviceConfigType::pinMatch(pin)) ? _device.readPortB() : _next._readPortBRecursive(pin);
+            return (DeviceConfigType::pinMatchDigital(pin)) ? _device.readPortB() : _next._readPortBRecursive(pin);
         }
 
         void _writePortRecursive(uint8_t pin, DataType value) {
-            return (DeviceConfigType::pinMatch(pin)) ? _device.writePort(value) : _next._writePortRecursive(pin, value);
+            return (DeviceConfigType::pinMatchDigital(pin)) ? _device.writePort(value) : _next._writePortRecursive(pin, value);
         }
 
         void _writePortARecursive(uint8_t pin, DataType value) {
-            return (DeviceConfigType::pinMatch(pin)) ? _device.writePortA(value) : _next._writePortARecursive(pin, value);
+            return (DeviceConfigType::pinMatchDigital(pin)) ? _device.writePortA(value) : _next._writePortARecursive(pin, value);
         }
 
         void _writePortBRecursive(uint8_t pin, DataType value) {
-            return (DeviceConfigType::pinMatch(pin)) ? _device.writePortB(value) : _next._writePortBRecursive(pin, value);
+            return (DeviceConfigType::pinMatchDigital(pin)) ? _device.writePortB(value) : _next._writePortBRecursive(pin, value);
         }
 
         bool _interruptsEnabledRecursive();
@@ -410,7 +418,7 @@ namespace IOExpander {
     // --------------------------------------------------------------------
     // configuration class for each device
 
-    template<typename _DeviceClassType, typename _DeviceType, uint8_t _Address, uint8_t _BeginPin, uint8_t _EndPin = 0>
+    template<typename _DeviceClassType, typename _DeviceType, uint8_t _Address, uint8_t _BeginPin>
     struct DeviceConfig {
         using DeviceClassType = _DeviceClassType;
         using DeviceType = _DeviceType;
@@ -418,13 +426,22 @@ namespace IOExpander {
         static constexpr DeviceTypeEnum kDeviceType = DeviceType::kDeviceType;
         static constexpr uint8_t kI2CAddress = _Address;
         static constexpr uint8_t kBeginPin = _BeginPin;
-        static constexpr uint8_t kEndPin = _EndPin == 0 ? (kBeginPin + DeviceType::kNumPins) : _EndPin;
-        static constexpr uint8_t kNumPins = kEndPin - kBeginPin;
+        static constexpr uint8_t kEndPin = kBeginPin + (DeviceType::kNumDigitalPins > DeviceType::kNumAnalogPins) ? DeviceType::kNumDigitalPins : DeviceType::kNumAnalogPins;
+        static constexpr uint8_t kNumDigitalPins = DeviceType::kNumDigitalPins;
+        static constexpr uint8_t kNumAnalogPins = DeviceType::kNumAnalogPins;
 
         static_assert(_BeginPin >= kMinimumPinNumber, "_BeginPin must be greater or equal kMinimumPinNumber");
 
-        static constexpr bool pinMatch(uint8_t pin) {
+        static constexpr bool pinMatchAny(uint8_t pin) {
             return pin >= kBeginPin && pin < kEndPin;
+        }
+
+        static constexpr bool pinMatchDigital(uint8_t pin) {
+            return pin >= kBeginPin && pin < kBeginPin + kNumDigitalPins;
+        }
+
+        static constexpr bool pinMatchAnalog(uint8_t pin) {
+            return pin >= kBeginPin && pin < kBeginPin + kNumAnalogPins;
         }
     };
 
