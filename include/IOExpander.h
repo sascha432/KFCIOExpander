@@ -425,10 +425,10 @@ namespace IOExpander {
 
         static constexpr DeviceTypeEnum kDeviceType = DeviceType::kDeviceType;
         static constexpr uint8_t kI2CAddress = _Address;
-        static constexpr uint8_t kBeginPin = _BeginPin;
-        static constexpr uint8_t kEndPin = kBeginPin + (DeviceType::kNumDigitalPins > DeviceType::kNumAnalogPins) ? DeviceType::kNumDigitalPins : DeviceType::kNumAnalogPins;
         static constexpr uint8_t kNumDigitalPins = DeviceType::kNumDigitalPins;
         static constexpr uint8_t kNumAnalogPins = DeviceType::kNumAnalogPins;
+        static constexpr uint8_t kBeginPin = _BeginPin;
+        static constexpr uint8_t kEndPin = kBeginPin + ((kNumDigitalPins > kNumAnalogPins) ? kNumDigitalPins : kNumAnalogPins);
 
         static_assert(_BeginPin >= kMinimumPinNumber, "_BeginPin must be greater or equal kMinimumPinNumber");
 

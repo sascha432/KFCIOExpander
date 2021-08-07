@@ -23,6 +23,9 @@ auto &pcf8574 = *IOExpander::config.getDeviceByAddress(0x27);
 // getting the device by any pin
 auto &pcf8574ByPin = *IOExpander::config.getDeviceByPin(0x80);
 
+static constexpr auto kBeginPin = decltype(IOExpander::config)::DeviceConfigType::kBeginPin;
+static constexpr auto kEndPin = decltype(IOExpander::config)::DeviceConfigType::kEndPin;
+
 void setup()
 {
     #if IOEXPANDER_INTERRUPT_MICROS_TIMER

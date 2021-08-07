@@ -5,6 +5,8 @@
 #include <Arduino_compat.h>
 #include "IOExpander.h"
 
+static constexpr auto kBeginPin = decltype(IOExpander::config)::DeviceConfigType::kBeginPin;
+static constexpr auto kEndPin = decltype(IOExpander::config)::DeviceConfigType::kEndPin;
 
 void setup()
 {
