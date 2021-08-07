@@ -11,7 +11,7 @@
   ],
   "build": {
     "flags": [
-      "-D HAVE_IOEXPANDER=1",
+      "-D HAVE_IOEXPANDER=defined(IOEXPANDER_DEVICE_CONFIG)",
       "-D IOEXPANDER_OVERRIDE_ARDUINO_FUNCTIONS=1"
     ]
   }
