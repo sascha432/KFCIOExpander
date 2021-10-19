@@ -8,7 +8,9 @@
 #include <Wire.h>
 
 #include <FunctionalInterrupt.h>
+#if ESP8266
 #include <Schedule.h>
+#endif
 
 #if HAVE_KFC_FIRMWARE_VERSION
 #include <PrintHtmlEntities.h>
@@ -55,7 +57,7 @@
 #endif
 
 #ifndef __CONSTEXPR17
-#    if __GNUC__ >= 10
+#    if __GNUC__ >= 8
 #        define __CONSTEXPR17 constexpr
 #    else
 #        define __CONSTEXPR17

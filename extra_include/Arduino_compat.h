@@ -7,7 +7,7 @@
 #include <Arduino.h>
 
 #ifndef __CONSTEXPR17
-#   if __GNUC__ >= 10
+#   if __GNUC__ >= 8
 #       define __CONSTEXPR17 constexpr
 #   else
 #       define __CONSTEXPR17

@@ -117,7 +117,7 @@ extern "C" {
         {
             if (pin < 16) {
                 stopWaveform(pin);
-                #if ARDUINO_ESP8266_MAJOR == 3
+                #if ARDUINO_ESP8266_MAJOR >= 3
                     _stopPWM(pin);
                 #endif
                 if (val) {
@@ -129,7 +129,7 @@ extern "C" {
             }
             else if (pin == 16) {
                 stopWaveform(pin);
-                #if ARDUINO_ESP8266_MAJOR == 3
+                #if ARDUINO_ESP8266_MAJOR >= 3
                     _stopPWM(pin);
                 #endif
                 if (val) {
